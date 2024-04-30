@@ -234,10 +234,12 @@ def main(opt):
     generator = generator.to(device)
     discriminator = discriminator.to(device)
 
-    # Optimizers
-    optimizer_G = torch.optim.Adam(generator.parameters(), lr=opt.lr, betas=(opt.b1, opt.b2))
-    optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=opt.lr, betas=(opt.b1, opt.b2))
-
+    # # Optimizers
+    # optimizer_G = torch.optim.Adam(generator.parameters(), lr=opt.lr, betas=(opt.b1, opt.b2))
+    # optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=opt.lr, betas=(opt.b1, opt.b2))
+    # Optimizers RMSprop
+    optimizer_G = torch.optim.RMSprop(generator.parameters(), lr=opt.lr, alpha=0.99)  
+    optimizer_D = torch.optim.RMSprop(discriminator.parameters(), lr=opt.lr, alpha=0.99)
     # loading pretrained if specified
     if (opt.G_pretrained!=None and opt.D_pretrained!=None):
         print("loading from -->")

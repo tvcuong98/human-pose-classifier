@@ -44,16 +44,15 @@ class ConvTemporalGraphical(nn.Module):
                  bias=False):
         super().__init__()
 
-        self.kernel_size = kernel_size
+        self.kernel_size = kernel_size # kernel_size = 3
         self.conv = nn.Conv2d(
             in_channels,
             out_channels*kernel_size,
-            kernel_size=(t_kernel_size, 1),
-            padding=(t_padding, 0),
-            stride=(t_stride, 1),
-            dilation=(t_dilation, 1),
+            kernel_size=(t_kernel_size, 1), # t_kernel_size = 1
+            padding=(t_padding, 0), # t_padding = 0
+            stride=(t_stride, 1),  # t_stride = 1
+            dilation=(t_dilation, 1), # t_dilation = 1
             bias=bias)
-        
 
     def forward(self, x, A):
         assert A.size(0) == self.kernel_size
@@ -66,3 +65,16 @@ class ConvTemporalGraphical(nn.Module):
         x = torch.einsum('nkctv,kvw->nctw', (x, A))
 
         return x.contiguous(), A
+
+# # Sample input data
+# x = torch.randn(32, 2, 10, 15)  # (Batch size, channels, temporal frame, nodes)
+# A = torch.randn(3, 15, 15)  # (kernel_size, nodes, nodes)
+
+# # Initialize the model
+# model = ConvTemporalGraphical(in_channels=2, out_channels=16, kernel_size=3)
+
+# # Pass the input through the model
+# output, updated_A = model(x, A)
+
+# print(output.shape)  # Output shape: (32, 16, 10, 15)
+# print(updated_A.shape) # Output shape: (3, 15, 15)

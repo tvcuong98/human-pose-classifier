@@ -184,7 +184,8 @@ class st_gcn(nn.Module):
         # print("After Noise Inject  : ", x.shape)
         return self.tanh(x) if self.tan else self.l_relu(x), A
 
-    
+
+
     def upsample_s(self, tensor): # upsample the V dimension-spatio dim, 1->2->7->16, at every st_gcn layer in which up_s = True
 
         ids  = []
@@ -201,3 +202,8 @@ class st_gcn(nn.Module):
 
 
         return tensor
+    # Overall Functionality
+    # The upsample_s function appears to perform a specific upsampling operation designed to:
+    # Group nodes: Based on the graph's structure and connectivity.
+    # Aggregate features: Calculate averages or summaries of features within these node groups.
+    # Insert aggregated features: Expand the spatial dimension of the feature representation by strategically inserting these aggregated features

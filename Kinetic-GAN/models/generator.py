@@ -133,12 +133,11 @@ class st_gcn(nn.Module):
         self.graph, self.lvl, self.up_s, self.up_t, self.tan = graph, lvl, up_s, up_t, tan
         self.gcn = ConvTemporalGraphical(in_channels, out_channels, # perform convolution on the C dim, decrease its size , originally at 512, final at 2 (x,y)
                                         kernel_size[1][lvl])
-
         tcn = [nn.Conv2d(
                 out_channels,
                 out_channels,
-                (kernel_size[0][lvl], 1),
-                (stride, 1),
+                (kernel_size[0][lvl], 1), #kernel_size is ([3, 3, 3, 3], [3, 3, 3, 3])
+                (stride, 1), # stride is always 1
                 padding,
             )] # dont change the shape of the tensor
         

@@ -75,22 +75,25 @@ class Generator(nn.Module):
         self.label_emb = nn.Embedding(n_classes, n_classes)
         
 
-    def forward(self, x, labels, trunc=None):
-
+    def forward(self, x, labels, trunc=None): # x.shape = torch.Size([128, 512])
         c = self.label_emb(labels)
-        x = torch.cat((c, x), -1)
-
+        x = torch.cat((c, x), -1) # torch.Size([128, 521])
         w = []
         for i in x:
             w = self.mlp(i).unsqueeze(0) if len(w)==0 else torch.cat((w, self.mlp(i).unsqueeze(0)), dim=0)
 
-        w = self.truncate(w, 1000, trunc) if trunc is not None else w  # Truncation trick on W
-
-        x = w.view((*w.shape, 1, 1))
-
+        w = self.truncate(w, 1000, trunc) if trunc is not None else w  # Truncation trick on W # torch.Size([128, 521]) (still keeping the same shape)
+        x = w.view((*w.shape, 1, 1)) # torch.Size([128, 521, 1, 1])
         # forward
         for gcn, importance in zip(self.st_gcn_networks, self.edge_importance):
             x, _ = gcn(x, self.A[gcn.lvl] * importance)
+            # After every st_gcn layer:  torch.Size([128, 512, 1, 1]) -> (in_chan,out_chan) = (521,512) , up_s=False, up_t=1
+            # After every st_gcn layer:  torch.Size([128, 256, 2, 1]) -> (in_chan,out_chan) = (512,256) , up_s=False, up_t=int(t_size/16)=32/16=2
+            # After every st_gcn layer:  torch.Size([128, 128, 2, 2]) -> (in_chan,out_chan) = (256,128) , up_s=True, up_t=int(t_size/16)=32/16=2
+            # After every st_gcn layer:  torch.Size([128, 64, 4, 2]) -> (in_chan,out_chan) = (128,64) , up_s=False, up_t=int(t_size/8)=32/8=4
+            # After every st_gcn layer:  torch.Size([128, 32, 8, 7]) -> (in_chan,out_chan) = (64,32) , up_s=True, up_t=int(t_size/4)=32/4=8
+            # After every st_gcn layer:  torch.Size([128, 2, 16, 7]) -> (in_chan,out_chan) = (32,2) , up_s=False, up_t=int(t_size/2)=32/2=16
+            # After every st_gcn layer:  torch.Size([128, 2, 32, 16]) -> (in_chan,out_chan) = (2,2) , up_s=True, up_t=int(t_size)=32
 
         return x
 
@@ -128,7 +131,7 @@ class st_gcn(nn.Module):
         assert kernel_size[0][lvl] % 2 == 1
         padding = ((kernel_size[0][lvl] - 1) // 2, 0)
         self.graph, self.lvl, self.up_s, self.up_t, self.tan = graph, lvl, up_s, up_t, tan
-        self.gcn = ConvTemporalGraphical(in_channels, out_channels,
+        self.gcn = ConvTemporalGraphical(in_channels, out_channels, # perform convolution on the C dim, decrease its size , originally at 512, final at 2 (x,y)
                                         kernel_size[1][lvl])
 
         tcn = [nn.Conv2d(
@@ -137,7 +140,7 @@ class st_gcn(nn.Module):
                 (kernel_size[0][lvl], 1),
                 (stride, 1),
                 padding,
-            )]
+            )] # dont change the shape of the tensor
         
         tcn.append(nn.BatchNorm2d(out_channels)) if bn else None
 
@@ -166,23 +169,24 @@ class st_gcn(nn.Module):
         self.tanh   = nn.Tanh()
 
     def forward(self, x, A):
-
-        x = self.upsample_s(x) if self.up_s else x
-        
-        x = F.interpolate(x, size=(self.up_t,x.size(-1)))  # Exactly like nn.Upsample
-
+        # print("Original shape: ", x.shape)
+        x = self.upsample_s(x) if self.up_s else x # upsample the V dimension-spatio dim, 1->2->7->16, at every st_gcn layer in which up_s = True
+        # print("After upsample_s, before interpolate : ", x.shape)
+        x = F.interpolate(x, size=(self.up_t,x.size(-1)))  # Exactly like nn.Upsample, here it increase the T in (N,C,T,V), according to up_t
+        # print("After interpolate, before ConvTemporalGraphical : ", x.shape)
         res = self.residual(x)
-        x, A = self.gcn(x, A)
-        x    = self.tcn(x) + res
-        
+        x, A = self.gcn(x, A) # perform convolution on the C dim, decrease its size , originally at 512, final at 2 (x,y)
+        # print("After ConvTemporalGraphical, before tcn  : ", x.shape)
+        x    = self.tcn(x) + res # dont change the shape of the tensor
+        # print("After tcn, before  Noise Inject  : ", x.shape)
         # Noise Inject
         noise = torch.randn(x.size(0), 1, x.size(2), x.size(3), device='cuda:0')
-        x     = self.noise(x, noise)
-
+        x     = self.noise(x, noise) # dont change the shape of the tensor
+        # print("After Noise Inject  : ", x.shape)
         return self.tanh(x) if self.tan else self.l_relu(x), A
 
     
-    def upsample_s(self, tensor):
+    def upsample_s(self, tensor): # upsample the V dimension-spatio dim, 1->2->7->16, at every st_gcn layer in which up_s = True
 
         ids  = []
         mean = []

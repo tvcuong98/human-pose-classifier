@@ -51,22 +51,27 @@ class Discriminator(nn.Module):
 
     def forward(self, x, labels):
         
-        N, C, T, V = x.size()
+        N, C, T, V = x.size() # torch.Size([128, 2, 32, 16])
 
 
         c = self.label_emb(labels)
         c = c.view(c.size(0), c.size(1), 1, 1).repeat(1, 1, T, V)
-
-        x = torch.cat((c, x), 1)
-        
+        x = torch.cat((c, x), 1) # torch.Size([128, 11, 32, 16]) # 9 class embedding have been concatenated into the xy channel
         # forward
         for gcn, importance in zip(self.st_gcn_networks, self.edge_importance):
             x, _ = gcn(x, self.A[gcn.lvl] * importance)
+            # There are 6 layers of st_gcn_networks, and the output after it pass through each of them:
+            # torch.Size([128, 32, 32, 7]) -> dw_s=True, dw_t=t_size , (channel_in,channel_out) = (11, 32)
+            # torch.Size([128, 64, 32, 7] -> dw_s=False, dw_t=t_size , (channel_in,channel_out) = (32, 64)
+            # torch.Size([128, 128, 16, 2]) -> dw_s=True, dw_t=int(t_size/2) , (channel_in,channel_out) = (64, 128)
+            # torch.Size([128, 256, 8, 2]) -> dw_s=False, dw_t=int(t_size/4) , (channel_in,channel_out) = (128, 256)
+            # torch.Size([128, 512, 4, 1]) -> dw_s=True, dw_t=int(t_size/8) , (channel_in,channel_out) = (256, 512)
+            # torch.Size([128, 512, 2, 1]) -> dw_s=False, dw_t=int(t_size/16) , (channel_in,channel_out) = (512, 512)
 
         
         # global pooling
-        x = F.avg_pool2d(x, x.size()[2:])
-        x = x.view(N, -1)
+        x = F.avg_pool2d(x, x.size()[2:]) # torch.Size([128, 512, 2, 1]) -> torch.Size([128, 512, 1])
+        x = x.view(N, -1) # torch.Size([128, 512, 1]) -> torch.Size([128, 512])
 
         # prediction
         validity = self.fcn(x)
@@ -94,7 +99,7 @@ class st_gcn(nn.Module):
         padding = ((kernel_size[0][lvl] - 1) // 2, 0)
         self.graph, self.lvl, self.dw_s, self.dw_t = graph, lvl, dw_s, dw_t
         self.gcn = ConvTemporalGraphical(in_channels, out_channels,
-                                        kernel_size[1][lvl])
+                                        kernel_size[1][lvl])  # the ConvTemporalGraphical will increase the channel , increase C in (N,C,T,V)
 
         self.tcn = nn.Conv2d(
                 out_channels,
@@ -102,7 +107,7 @@ class st_gcn(nn.Module):
                 (kernel_size[0][lvl], 1),
                 (stride, 1),
                 padding,
-            )
+            ) # the tcn dont change the shape of the tensor
 
 
         if not residual:
@@ -124,19 +129,22 @@ class st_gcn(nn.Module):
 
     def forward(self, x, A):
         
-
+        # print("Before ConvTemporalGraphical shape: ", x.shape)
         res = self.residual(x)
         x, A = self.gcn(x, A)
+        # print("After ConvTemporalGraphical, before tcn shape: ", x.shape)
         x    = self.tcn(x) + res
-
-        x = self.downsample_s(x) if self.dw_s else x
-        
-        x = F.interpolate(x, size=(self.dw_t,x.size(-1)))  # Exactly like nn.Upsample
-
+        # print("After tcn, before downsample_s shape: ", x.shape)
+        x = self.downsample_s(x) if self.dw_s else x # downsample_s decrease the V dimension in (N,C,T,V), if dw_s is True in the st_gcn params
+                                                     # 16 -> 7 -> 2 -> 1
+        # print("After downsample_s, before F.interpolate shape: ", x.shape)
+        x = F.interpolate(x, size=(self.dw_t,x.size(-1)))  # F.interpolate decrease the T dimension in (N,C,T,V), according to the value of dw_t
+        # print("After F.interpolate shape : ", x.shape)
         return self.l_relu(x), A
 
 
-    def downsample_s(self, tensor):
+    def downsample_s(self, tensor): # downsample_s decrease the V dimension in (N,C,T,V), if dw_s is True in the st_gcn params
+                                    # 16 -> 7 -> 2 -> 1
         keep = self.graph.map[self.lvl+1][:,1]
 
         return tensor[:,:,:,keep]

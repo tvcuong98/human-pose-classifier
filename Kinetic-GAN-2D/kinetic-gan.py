@@ -246,22 +246,20 @@ for epoch in range(opt.n_epochs):
             g_loss.backward()
             optimizer_G.step()
 
-        print(
-            "[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f]"
-            % (epoch, opt.n_epochs, i, len(dataloader), d_loss.item(), g_loss.item())
-        )
+    print(
+        "[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f]"
+        % (epoch, opt.n_epochs, i, len(dataloader), d_loss.item(), g_loss.item())
+    )
 
-        loss_d.append(d_loss.data.cpu())
-        loss_g.append(g_loss.data.cpu())
-        if batches_done % opt.sample_interval == 0:
-            sample_action(n_row=opt.n_classes,epoch=epoch,batch=batches_done)
-
-        #     general.save('kinetic-gan', {'d_loss': loss_d, 'g_loss': loss_g}, 'plot_loss')
+    loss_d.append(d_loss.data.cpu())
+    loss_g.append(g_loss.data.cpu())
+    if epoch % opt.sample_interval == 0:
+        sample_action(n_row=opt.n_classes,epoch=epoch,batch=batches_done)
         
-        if opt.checkpoint_interval != -1 and batches_done % opt.checkpoint_interval == 0:
-            # Save model checkpoints
-            torch.save((generator.state_dict(),optimizer_G.state_dict()), os.path.join(models_out, "generator_%d.pth" % batches_done))
-            torch.save((discriminator.state_dict(),optimizer_D.state_dict()), os.path.join(models_out, "discriminator_%d.pth" % batches_done))
+    if opt.checkpoint_interval != -1 and epoch % opt.checkpoint_interval == 0:
+        # Save model checkpoints
+        torch.save((generator.state_dict(),optimizer_G.state_dict()), os.path.join(models_out, "generator_ep_%d_bt_%d.pth" % (epoch,batches_done)))
+        torch.save((discriminator.state_dict(),optimizer_D.state_dict()), os.path.join(models_out, "discriminator_ep_%d_bt_%d.pth" % (epoch,batches_done)))
     writer.add_scalar('Loss/generator', g_loss, epoch)
     writer.add_scalar('Loss/discriminator', d_loss, epoch)
     writer.add_scalars('Loss/gen_dis', {

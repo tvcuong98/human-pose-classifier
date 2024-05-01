@@ -9,11 +9,11 @@ python3 train.py \
   --batch_size 128 \
   --channels 2 \
   --checkpoint_interval 100 \
-  --lambda_gp 0 \
+  --lambda_gp 10 \
   --dataset h36m \
   --latent_dim 512 \
   --mlp_dim 8 \
-  --lr 0.0001 \
+  --lr 0.0002 \
   --n_classes 9 \
   --n_cpu 8 \
   --n_critic 5 \

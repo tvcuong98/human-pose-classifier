@@ -3,3 +3,4 @@ matplotlib==3.7.5
 opencv_python==4.9.0.80
 scipy==1.10.1
 tensorboard==2.14.0
+tqdm==4.66.2

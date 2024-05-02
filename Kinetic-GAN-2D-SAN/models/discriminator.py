@@ -72,7 +72,7 @@ class Discriminator(nn.Module):
         weights = self.fcn_w
         direction = F.normalize(weights,dim=1) # Normalize the last layer
         scale = torch.norm(weights,dim=1).unsqueeze(1)
-        h_feature = h_feature*scale # For keep the scale
+        h_feature = h_feature*1 # For keep the scale
         # prediction
         if flg_train: # for discriminator training
             validity_fun = (h_feature.detach() * direction).sum(dim=1)

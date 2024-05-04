@@ -1,3 +1,4 @@
+.gitignore
 Kinetic-GAN*/feeder/__pycache__/
 Kinetic-GAN*/models/__pycache__/
 Kinetic-GAN*/models/init_gan/__pycache__/
@@ -5,3 +6,4 @@ Kinetic-GAN*/utils/__pycache__/
 Kinetic-GAN*/visualization/__pycache__/
 Kinetic-GAN*/runs*/
 Kinetic-GAN*/tensorboard_runs*/
+classifier/__pycache__/

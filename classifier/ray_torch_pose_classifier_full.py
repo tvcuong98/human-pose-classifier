@@ -25,9 +25,9 @@ parser.add_argument("--max_num_epochs", type=int, default=50, help="maximum numb
 parser.add_argument("--num_samples", type=int, default=50, help="number of samples or configurations or trials will be conducted for EACH of the hyperparameter")
 parser.add_argument("--model",type=str,help="The class name of the model")
 parser.add_argument("--batch_size", type=int, default=2048, help="size of the batches")
-parser.add_argument("--latent",type=list, default=[512,256,128,64],help="the list of the hidden dims you want to test with")
-parser.add_argument("--drop_out_p",type=list, default=[0.0,0.1,0.2,0.3],help="the list of the dropout you want to test with")
-parser.add_argument("--lr", type=list, default=[1e-4,1e-1], help="learning rate")
+parser.add_argument("--latent",type=int,  nargs='+',default=[512, 256, 128, 64],help="the list of the hidden dims you want to test with")
+parser.add_argument("--drop_out_p",type=float, nargs="+", default=[0.0, 0.1, 0.2, 0.3],help="the list of the dropout you want to test with")
+parser.add_argument("--lr", type=float, nargs="+",default=[0.0001, 0.1], help="learning rate")
 parser.add_argument("--b1", type=float, default=0.5, help="adam: decay of first order momentum of gradient")
 parser.add_argument("--b2", type=float, default=0.999, help="adam: decay of first order momentum of gradient")
 parser.add_argument("--n_classes", type=int, default=9, help="number of classes for dataset")
@@ -37,7 +37,7 @@ parser.add_argument("--test", type=str, help="path to data")
 parser.add_argument("--val", type=str, help="path to data")
 #parser.add_argument("--output_dir",type=str, default="output")
 opt = parser.parse_args()
-#python ray_torch_pose_classifier_full.py --min_num_epochs 5 --max_num_epochs 50 --num_samples 50 --model RobustPoseClassifier --batch_size 512 --latent [512,256,128,64] --drop_out_p [0.0,0.1,0.2,0.3] --lr [1e-4,1e-1] --b1 0.5 --b2 0.999 --train ../data/kp_16_cover_modes/uncover/trainuncover.csv --val ../data/kp_16_cover_modes/uncover/testuncover.csv --test ../data/kp_16_cover_modes/uncover/testuncover.csv
+#python ray_torch_pose_classifier_full.py --min_num_epochs 5 --max_num_epochs 50 --num_samples 50 --model RobustPoseClassifier --batch_size 512 --latent 512 256 128 64 --drop_out_p 0.0 0.1 0.2 0.3 --lr 0.0001 0.1 --b1 0.5 --b2 0.999 --train /home/edabk-lab/cuong/human-pose-classifier/data/kp_16_cover_modes/uncover/trainuncover.csv --val /home/edabk-lab/cuong/human-pose-classifier/data/kp_16_cover_modes/uncover/testuncover.csv --test /home/edabk-lab/cuong/human-pose-classifier/data/kp_16_cover_modes/uncover/testuncover.csv
 
 def train_pose_classifier(config):
     drop_out_p = config["drop_out_p"]
@@ -85,7 +85,7 @@ def train_pose_classifier(config):
         num_workers=0
     )
 
-    for epoch in range(opt.n_epochs):  # loop over the dataset multiple times
+    for epoch in range(opt.max_num_epochs):  # loop over the dataset multiple times
         running_loss = 0.0
         epoch_steps = 0
         for i, data in enumerate(trainloader):
@@ -139,7 +139,7 @@ def train_pose_classifier(config):
         precision = precision_score(y_true, y_pred, average='macro')
         recall = recall_score(y_true, y_pred, average='macro')
         f1 = f1_score(y_true, y_pred, average='macro')
-        auc = roc_auc_score(y_true, outputs.cpu(), multi_class='ovr')
+        # auc = roc_auc_score(y_true, outputs.cpu(), multi_class='ovr')
         with tempfile.TemporaryDirectory() as temp_checkpoint_dir: # the tempfile will be automatically deleted after this "with" ends
             path = os.path.join(temp_checkpoint_dir, "checkpoint.pt")
             torch.save(
@@ -152,16 +152,17 @@ def train_pose_classifier(config):
                  "accuracy": accuracy,
                  "precision": precision,
                  "recall": recall,
-                 "f1":f1,
-                 "auc":auc
+                 "f1":f1
+                #  "auc":auc
                 },
                 checkpoint=checkpoint,
             )
     print("Finished Training")
 
 def main(num_samples, max_num_epochs, gpus_per_trial, opt,smoke_test=False):
+    print(list(opt.lr))
     config = {
-        "lr": tune.loguniform(opt.lr[0], opt.lr[1]),
+        "lr": tune.loguniform(float(opt.lr[0]), float(opt.lr[1])),
         "drop_out_p": tune.grid_search(opt.drop_out_p),
         "latent": tune.grid_search(opt.latent)
     }

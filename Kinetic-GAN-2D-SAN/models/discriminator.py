@@ -67,9 +67,9 @@ class Discriminator(nn.Module):
         
         # # global pooling
         # x = F.avg_pool2d(x, x.size()[2:])
-
+        # print(x.shape)
         # Conv instead of global pooling
-        x = self.conv(x)
+        # x = self.conv(x)
         x = x.view(N, -1) #(N,512)
 
         h_feature = x #(N,512)

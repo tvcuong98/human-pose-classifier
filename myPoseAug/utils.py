@@ -4,6 +4,7 @@ import torch.nn as nn
 def init_weights(m):
     if isinstance(m, nn.Linear):
         nn.init.kaiming_normal_(m.weight)
+        nn.init.zeros_(m.bias) 
 def get_BoneVecbypose2d(x, num_joints=16):
     '''
     :explain: convert 2D point to bone vector
@@ -88,7 +89,7 @@ def get_bone_unit_vecbypose2d(x, num_joints=16, bone_dim=2):
     '''
     bonevec = get_BoneVecbypose2d(x)
     bonelength = get_bone_lengthbypose2d(x)
-    bone_unitvec = bonevec / bonelength
+    bone_unitvec = bonevec / bonelength # this is where it gets nan -> dividing by 0
     return bone_unitvec
 def blaugment9to15(x, bl, blr, num_bone=15):
     '''

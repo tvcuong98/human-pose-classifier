@@ -34,9 +34,9 @@ def get_adversarial_loss(discriminator,data_real,data_fake,criterion,device=torc
     data_fake.to(device)
     real_validity = discriminator(data_real) # shape N x 1
     fake_validity = discriminator(data_fake) # shape N x 1
-
     real_label = Variable(torch.ones(real_validity.size())).to(device) # shape N x 1
     fake_label = Variable(torch.zeros(fake_validity.size())).to(device) # shape N x 1
+    # print(fake_label)
     adversarial_real_loss = criterion(real_validity,real_label)
     adversarial_fake_loss = criterion(fake_validity,fake_label)
     adversarial_loss = (adversarial_real_loss + adversarial_fake_loss)*0.5

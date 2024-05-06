@@ -61,14 +61,14 @@ class Pos2DDiscriminator(nn.Module):
 
     def forward(self, inputs_3d):
         # convert 3d pose to root relative
+        
         x = inputs_3d - inputs_3d[:, :1, :]  # x: root relative
-        bv_unit = get_bone_unit_vecbypose2d(x,num_joints=self.num_joints)
+        bv_unit = get_bone_unit_vecbypose2d(x,num_joints=self.num_joints) # this is where it get shit in nan
+        # print(torch.isnan(bv_unit).any().item())
         x = get_pose2dbyBoneVec(bv_unit,num_joints=self.num_joints)
-
         # KCS path
         psi_vec_lh = kcs_layer_lh(x,num_joints=self.num_joints).view((x.size(0), -1)) # pass through KCS, flatten
         k_lh = self.kcs_path_1(psi_vec_lh)
-
         psi_vec_rh = kcs_layer_rh(x,num_joints=self.num_joints).view((x.size(0), -1)) # pass through KCS, flatten
         k_rh = self.kcs_path_2(psi_vec_rh)
 

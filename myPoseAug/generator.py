@@ -47,7 +47,6 @@ class PoseGenerator(nn.Module):
         :param inputs_3d: nx16x2, with hip root
         :return: nx16x2
         '''
-        print(inputs_2d)
         pose_ba, ba_diff = self.BAprocess(inputs_2d)  # diff may be used for div loss
         pose_bl, blr = self.BLprocess(inputs_2d, pose_ba)  # blr used for debug
         pose_rt, rt = self.RTprocess(inputs_2d, pose_bl)  # rt=(r,t) used for debug
@@ -112,6 +111,7 @@ class BAGenerator(nn.Module):
         noise = torch.randn(x.shape[0], self.noise_channel, device=x.device)
 
         y = self.w1(torch.cat((x, noise), dim=1))
+        # print(y)
         y = self.batch_norm1(y)
         y = self.relu(y)
 

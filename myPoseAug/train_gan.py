@@ -59,7 +59,6 @@ def main(args):
     }
 
     for epoch in range(start_epoch,args.num_epochs):
-        print("helo")
         running_loss = 0.0
         epoch_steps = 0
         #### training generator and discriminator for GAN #####
@@ -67,22 +66,22 @@ def main(args):
         for i, data in enumerate(trainloader):
             data_real, labels = data
             data_real, labels = data_real.float().to(device), labels.type(torch.LongTensor).to(device)
-
+            haah = discriminator(data_real)
             #### training generator 
-            G_optimizer.zero_grad()
-            data_fake_dict = generator(data_real)
-            data_fake = data_fake_dict['pose_ba']
-            _, generator_loss = get_adversarial_loss(discriminator,data_real,data_fake,gan_criterion)
-            generator_loss.backward()
-            G_optimizer.step()
+            # G_optimizer.zero_grad()
+            # data_fake_dict = generator(data_real)
+            # data_fake = data_fake_dict['pose_ba']
+            # _, generator_loss = get_adversarial_loss(discriminator,data_real,data_fake,gan_criterion)
+            # generator_loss.backward()
+            # G_optimizer.step()
 
-            ## training discriminator 
-            data_fake = data_fake_dict['pose_rt'].detach()  # Detach here
-            D_optimizer.zero_grad() 
-            # Recalculate adv_loss since the graph has been modified
-            adv_loss, _ = get_adversarial_loss(discriminator, data_real, data_fake, gan_criterion) 
-            adv_loss.backward()
-            D_optimizer.step()
+            # ## training discriminator 
+            # data_fake = data_fake_dict['pose_rt'].detach()  # Detach here
+            # D_optimizer.zero_grad() 
+            # # Recalculate adv_loss since the graph has been modified
+            # adv_loss, _ = get_adversarial_loss(discriminator, data_real, data_fake, gan_criterion) 
+            # adv_loss.backward()
+            # D_optimizer.step()
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--num_epochs", type=int, default=1200, help="number of epochs of training")

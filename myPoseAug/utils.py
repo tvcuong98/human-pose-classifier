@@ -87,9 +87,10 @@ def get_bone_unit_vecbypose2d(x, num_joints=16, bone_dim=2):
     :return: N x number of bone x 2
     :explain : number of bone = number of joint - 1
     '''
-    bonevec = get_BoneVecbypose2d(x)
-    bonelength = get_bone_lengthbypose2d(x)
-    bone_unitvec = bonevec / bonelength # this is where it gets nan -> dividing by 0
+    bonevec = get_BoneVecbypose2d(x) # N,15,2
+    bonelength = get_bone_lengthbypose2d(x)  # N,15,1
+    bonelength = torch.where(bonelength == 0, bonelength + 0.0001,bonelength) # avoid dividing by 0
+    bone_unitvec = bonevec / bonelength # this is where it gets nan -> dividing by 0      
     return bone_unitvec
 def blaugment9to15(x, bl, blr, num_bone=15):
     '''

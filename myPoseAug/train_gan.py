@@ -7,6 +7,7 @@ from generator import PoseGenerator
 from discriminator import Pos2DDiscriminator
 from utils import init_weights
 from losses import get_adversarial_loss, get_diff_loss,get_classification_loss,get_feedback_loss
+from visualization import plot
 # Only discriminator will be used as input
 # The generator are not used here, we assume that the data_fake have been created else where and just use it here
 def main(args):
@@ -66,22 +67,22 @@ def main(args):
         for i, data in enumerate(trainloader):
             data_real, labels = data
             data_real, labels = data_real.float().to(device), labels.type(torch.LongTensor).to(device)
-            haah = discriminator(data_real)
-            #### training generator 
-            # G_optimizer.zero_grad()
-            # data_fake_dict = generator(data_real)
-            # data_fake = data_fake_dict['pose_ba']
-            # _, generator_loss = get_adversarial_loss(discriminator,data_real,data_fake,gan_criterion)
-            # generator_loss.backward()
-            # G_optimizer.step()
+            # haah = discriminator(data_real)
+            ### training generator 
+            G_optimizer.zero_grad()
+            data_fake_dict = generator(data_real)
+            data_fake = data_fake_dict['pose_rt']
+            _, generator_loss = get_adversarial_loss(discriminator,data_real,data_fake,gan_criterion)
+            generator_loss.backward()
+            G_optimizer.step()
 
-            # ## training discriminator 
-            # data_fake = data_fake_dict['pose_rt'].detach()  # Detach here
-            # D_optimizer.zero_grad() 
-            # # Recalculate adv_loss since the graph has been modified
-            # adv_loss, _ = get_adversarial_loss(discriminator, data_real, data_fake, gan_criterion) 
-            # adv_loss.backward()
-            # D_optimizer.step()
+            ## training discriminator 
+            data_fake = data_fake_dict['pose_rt'].detach()  # Detach here
+            D_optimizer.zero_grad() 
+            # Recalculate adv_loss since the graph has been modified
+            adv_loss, _ = get_adversarial_loss(discriminator, data_real, data_fake, gan_criterion) 
+            adv_loss.backward()
+            D_optimizer.step()
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--num_epochs", type=int, default=1200, help="number of epochs of training")

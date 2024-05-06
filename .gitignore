@@ -1,4 +1,5 @@
 .gitignore
+*__pycache__/
 Kinetic-GAN*/feeder/__pycache__/
 Kinetic-GAN*/models/__pycache__/
 Kinetic-GAN*/models/init_gan/__pycache__/

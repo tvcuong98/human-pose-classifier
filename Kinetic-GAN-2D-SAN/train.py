@@ -233,7 +233,8 @@ def main(opt):
     discriminator = Discriminator(opt.channels, opt.n_classes, opt.t_size, opt.latent_dim, dataset=opt.dataset)
     generator = generator.to(device)
     discriminator = discriminator.to(device)
-
+    print("==> Total parameters: {:.2f}M".format(sum(p.numel() for p in generator.parameters()) / 1000000.0))
+    print("==> Total parameters: {:.2f}M".format(sum(p.numel() for p in discriminator.parameters()) / 1000000.0))
     # # Optimizers
     # optimizer_G = torch.optim.Adam(generator.parameters(), lr=opt.lr, betas=(opt.b1, opt.b2))
     # optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=opt.lr, betas=(opt.b1, opt.b2))

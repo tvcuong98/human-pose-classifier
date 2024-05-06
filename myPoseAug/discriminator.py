@@ -83,11 +83,6 @@ class Pos2DDiscriminator(nn.Module):
 
         out = torch.cat([k_lh, k_rh, k_ll, k_rl, k_hb], dim=1)
         return out
-model_d2d = Pos2DDiscriminator(num_joints=16).to(torch.device("cuda"))
-model_d2d.apply(init_weights)
-input = torch.randn(1,16,2)
-print(model_d2d(input).shape)
-
 
 def kcs_layer_hb(x, num_joints=16):
     """
@@ -153,6 +148,11 @@ def kcs_layer_rh(x, num_joints=16):
     Psi = torch.matmul(bv, bv.permute(0, 2, 1).contiguous())
     return Psi
 
+
+model_d2d = Pos2DDiscriminator(num_joints=16).to(torch.device("cuda"))
+model_d2d.apply(init_weights)
+input = torch.randn(1,16,2).to(torch.device("cuda"))
+print(model_d2d(input).shape)
 
 # class Pos2dDiscriminator(nn.Module):
 #     def __init__(self, num_joints=16):

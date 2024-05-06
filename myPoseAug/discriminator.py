@@ -43,7 +43,7 @@ from utils import get_bone_unit_vecbypose2d, get_pose2dbyBoneVec, get_BoneVecbyp
 class Pos2DDiscriminator(nn.Module):
     """
     :input : N x 16 x 2
-    :output : N x 5 
+    :output : N x 5 - > pass through linear pred layer -> N x 1
     :explain: 5 for 5 kcs_paths
     """
     def __init__(self, num_joints=16, kcs_channel=256, channel_mid=100):
@@ -56,7 +56,7 @@ class Pos2DDiscriminator(nn.Module):
         self.kcs_path_3 = KCSpath(channel=kcs_channel, channel_mid=channel_mid)
         self.kcs_path_4 = KCSpath(channel=kcs_channel, channel_mid=channel_mid)
         self.kcs_path_5 = KCSpath(channel=kcs_channel, channel_mid=channel_mid)
-
+        self.layer_pred = nn.Linear(5, 1) # since 5 : kcs_layer_{hb,rl,ll,lh,rh}
         self.relu = nn.LeakyReLU()
 
     def forward(self, inputs_3d):
@@ -81,8 +81,10 @@ class Pos2DDiscriminator(nn.Module):
         psi_vec_hb = kcs_layer_hb(x,num_joints=self.num_joints).view((x.size(0), -1))
         k_hb = self.kcs_path_5(psi_vec_hb)
 
-        out = torch.cat([k_lh, k_rh, k_ll, k_rl, k_hb], dim=1)
-        return out
+        layer_near_last = torch.cat([k_lh, k_rh, k_ll, k_rl, k_hb], dim=1)
+        layer_near_last = self.relu(layer_near_last)
+        validity = self.layer_pred(layer_near_last)
+        return validity
 
 def kcs_layer_hb(x, num_joints=16):
     """

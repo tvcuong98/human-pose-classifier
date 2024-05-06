@@ -151,10 +151,10 @@ def kcs_layer_rh(x, num_joints=16):
     return Psi
 
 
-model_d2d = Pos2DDiscriminator(num_joints=16).to(torch.device("cuda"))
-model_d2d.apply(init_weights)
-input = torch.randn(1,16,2).to(torch.device("cuda"))
-print(model_d2d(input).shape)
+# model_d2d = Pos2DDiscriminator(num_joints=16).to(torch.device("cuda"))
+# model_d2d.apply(init_weights)
+# input = torch.randn(1,16,2).to(torch.device("cuda"))
+# print(model_d2d(input).shape)
 
 # class Pos2dDiscriminator(nn.Module):
 #     def __init__(self, num_joints=16):

@@ -6,10 +6,8 @@ import torch.nn as nn
 import torchgeometry as tgm
 from utils import get_bone_lengthbypose2d, get_bone_unit_vecbypose2d, \
     get_pose2dbyBoneVec,blaugment9to15
+from utils import init_weights
 
-def init_weights(m):
-    if isinstance(m, nn.Linear):
-        nn.init.kaiming_normal_(m.weight)
 class Linear(nn.Module):
     def __init__(self, linear_size):
         super(Linear, self).__init__()
@@ -37,10 +35,10 @@ class Linear(nn.Module):
 ###################  START  ##########################
 ######################################################
 class PoseGenerator(nn.Module):
-    def __init__(self, args, input_size=16 * 2):
+    def __init__(self, blr_tanhlimit, input_size=16 * 2):
         super(PoseGenerator, self).__init__()
         self.BAprocess = BAGenerator(input_size=input_size)
-        self.BLprocess = BLGenerator(input_size=input_size, blr_tanhlimit=args.blr_tanhlimit)
+        self.BLprocess = BLGenerator(input_size=input_size, blr_tanhlimit=blr_tanhlimit)
         self.RTprocess = RTGenerator(input_size=input_size)
 
     def forward(self, inputs_2d):
@@ -49,6 +47,7 @@ class PoseGenerator(nn.Module):
         :param inputs_3d: nx16x2, with hip root
         :return: nx16x2
         '''
+        print(inputs_2d)
         pose_ba, ba_diff = self.BAprocess(inputs_2d)  # diff may be used for div loss
         pose_bl, blr = self.BLprocess(inputs_2d, pose_ba)  # blr used for debug
         pose_rt, rt = self.RTprocess(inputs_2d, pose_bl)  # rt=(r,t) used for debug
@@ -194,21 +193,34 @@ class RTGenerator(nn.Module):
         x = inputs_2d - inputs_2d[:, :1, :]  # x: root relative which is the spine
 
         # pre-processing
-        x = x.view(x.size(0), -1)
+        x = x.view(x.size(0), -1) # n, 16*2
 
         # caculate R
         noise = torch.randn(x.shape[0], self.noise_channel, device=x.device)
-        r = self.w1_R(torch.cat((x, noise), dim=1))
-        r = self.batch_norm_R(r)
-        r = self.relu(r)
+        r = self.w1_R(torch.cat((x, noise), dim=1)) # (n, self.linear_size)
+        r = self.batch_norm_R(r) # (n, self.linear_size)
+        r = self.relu(r) # (n, self.linear_size)
         # r = self.dropout(r)
         for i in range(self.num_stage):
             r = self.linear_stages_R[i](r)
+        # still (n, self.linear_size)
+        r = self.w2_R(r) # (n, 2)
+        #This is for 3D
+        # r = nn.Tanh()(r) * 3.1415 
+        # r = r.view(x.size(0), 2)
+        # print(tgm.angle_axis_to_rotation_matrix(r).shape)
+        # rM = tgm.angle_axis_to_rotation_matrix(r)[..., :3, :3]  # Nx4x4->Nx3x3 rotation matrix
+        # Adapt to 2D
+        r[:, 1] = r[:, 1] % (2 * 3.1415)  
 
-        r = self.w2_R(r)
-        r = nn.Tanh()(r) * 3.1415
-        r = r.view(x.size(0), 2)
-        rM = tgm.angle_axis_to_rotation_matrix(r)[..., :2, :2]  # Nx4x4->Nx3x3 rotation matrix
+        cos_theta = torch.cos(r[:, 1])  
+        sin_theta = torch.sin(r[:, 1])  
+
+        rotation_matrices = torch.stack([cos_theta, -sin_theta,
+                                        sin_theta, cos_theta], dim=-1)
+        rM =rotation_matrices.view(r.size(0), 2, 2)  # Reshape to Nx2x2
+        
+
 
         # caculate T
         noise = torch.randn(x.shape[0], self.noise_channel, device=x.device)

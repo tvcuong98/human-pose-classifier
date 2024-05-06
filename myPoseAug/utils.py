@@ -1,5 +1,9 @@
 import torch
 import numpy as np
+import torch.nn as nn
+def init_weights(m):
+    if isinstance(m, nn.Linear):
+        nn.init.kaiming_normal_(m.weight)
 def get_BoneVecbypose2d(x, num_joints=16):
     '''
     :explain: convert 2D point to bone vector

@@ -13,7 +13,10 @@ def diff_range_loss(a, b, std):
     diff_weighted = diff * weight
     return diff_weighted.mean()
 
-### main loss functions
+### main loss functions : 
+# In all of these loss functions, only discriminator have been used as input
+# The generator are not used here, we assume that the data_fake have been created else where and just use it here
+
 def get_adversarial_loss(discriminator,data_real,data_fake,criterion,device=torch.device("cuda")):
     """
     : ####### Input #######
@@ -34,10 +37,8 @@ def get_adversarial_loss(discriminator,data_real,data_fake,criterion,device=torc
 
     real_label = Variable(torch.ones(real_validity.size())).to(device) # shape N x 1
     fake_label = Variable(torch.zeros(fake_validity.size())).to(device) # shape N x 1
-
     adversarial_real_loss = criterion(real_validity,real_label)
     adversarial_fake_loss = criterion(fake_validity,fake_label)
-
     adversarial_loss = (adversarial_real_loss + adversarial_fake_loss)*0.5
     generator_loss = adversarial_fake_loss
     return adversarial_loss,generator_loss
@@ -66,7 +67,7 @@ def get_diff_loss(args,generator_output_dict):
     for key in diff_loss_dict:
         loss = loss + diff_loss_dict[key]
     return loss
-def get_classification_loss(x,classification_model,labels,criterion,device=torch.device("cuda")): 
+def get_classification_loss(x,classification_model,labels,criterion=nn.CrossEntropyLoss(),device=torch.device("cuda")): 
     """
     : input 0: x        : N,16,2
     : input 1: classification_model

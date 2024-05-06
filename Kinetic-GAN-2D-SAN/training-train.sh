@@ -22,7 +22,7 @@ python3 train.py \
   --t_size 1 \
   --v_size 16 \
   --csv_path "../data/kp_16_cover_modes/cover2/traincover2.csv" \
-  --runs "runs_cover2" \
-  --tb_runs "tensorboard_runs_cover2" \
+  --runs "runs_cover2_test" \
+  --tb_runs "tensorboard_runs_cover2_test" \
   --device 0 \
   --model "san"

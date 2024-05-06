@@ -45,7 +45,8 @@ class Discriminator(nn.Module):
             self.edge_importance = [1] * len(self.st_gcn_networks)
 
         self.label_emb = nn.Embedding(n_classes, n_classes)
-
+        # adding conv layer
+        self.conv = nn.Conv2d(in_channels=512, out_channels=512, kernel_size=(2, 1), stride=(2, 1), padding=0)
         # fcn for prediction
         self.fcn = nn.Linear(latent, 1)
 
@@ -70,7 +71,9 @@ class Discriminator(nn.Module):
 
         
         # global pooling
-        x = F.avg_pool2d(x, x.size()[2:]) # torch.Size([128, 512, 2, 1]) -> torch.Size([128, 512, 1])
+        # x = F.avg_pool2d(x, x.size()[2:]) # torch.Size([128, 512, 2, 1]) -> torch.Size([128, 512, 1])
+        # conv layer instead of pooling
+        x = self.conv(x)
         x = x.view(N, -1) # torch.Size([128, 512, 1]) -> torch.Size([128, 512])
 
         # prediction

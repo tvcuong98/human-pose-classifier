@@ -115,6 +115,7 @@ def get_bone_lengthbypose2d(x, bone_dim=2):
     '''
     bonevec = get_BoneVecbypose2d(x)
     bones_length = torch.norm(bonevec, dim=2, keepdim=True)
+    bones_length = torch.where(bones_length == 0, bones_length + 0.0001,bones_length)
     return bones_length
 def get_bone_unit_vecbypose2d(x, num_joints=16, bone_dim=2):
     '''

@@ -71,8 +71,9 @@ def transform_tensor(input_tensor):
         input_tensor = input_tensor.cpu().detach()
 
     # Assert expected input shape
-    assert (input_tensor.shape == (1, 16, 2)  or input_tensor.shape == (16, 2)), "Input tensor must have shape (1, 16, 2) or (16, 2) "
+    assert (input_tensor.shape == (1, 16, 2)  or input_tensor.shape == (16, 2) or input_tensor.shape == (32,)), "Input tensor must have shape (1, 16, 2) or (16, 2) "
 
+    if input_tensor.shape == (32,) : return input_tensor
     # Convert to NumPy array with the same shape
     numpy_array = input_tensor.numpy()
 
@@ -93,7 +94,6 @@ def plot(sample,path,name): # this is for ploting 1 sample
     # temp_sample[::2]=sample[0,:]
     # temp_sample[1::2]=sample[1,:]
     # sample=temp_sample
-
     sample = transform_tensor(sample)
     # print(sample)
     if sample.shape[0] == 32:

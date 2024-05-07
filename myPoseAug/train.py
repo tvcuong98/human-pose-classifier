@@ -11,6 +11,10 @@ from losses import get_adversarial_loss, get_diff_loss,get_classification_loss,g
 from visualization import plot
 import random
 import os
+
+############################ SAMPLE USAGE :
+#python train.py --runs cover2 --epochs 500 --batch_size 64 --train /home/edabk/cuong/human-pose-classifier/data/kp_16_cover_modes/cover2/traincover2.csv --test /home/edabk/cuong/human-pose-classifier/data/kp_16_cover_modes/cover2/testcover2.csv
+############################ GOOD LUCK
 # Only discriminator will be used as input
 # The generator are not used here, we assume that the data_fake have been created else where and just use it here
 def main(args):

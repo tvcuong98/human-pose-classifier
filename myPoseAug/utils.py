@@ -1,6 +1,40 @@
 import torch
 import numpy as np
 import torch.nn as nn
+def has_nan(input_array):
+    """Checks for NaN values in a NumPy array or a PyTorch tensor.
+
+    Args:
+        input_array: The NumPy array or PyTorch tensor to check.
+
+    Returns:
+        True if the input contains at least one NaN value, False otherwise.
+    """
+
+    if isinstance(input_array, np.ndarray):
+        return np.isnan(input_array).any()
+    elif isinstance(input_array, torch.Tensor):
+        # Safely handle tensors on CPU or GPU
+        return torch.isnan(input_array.to('cpu')).any().item()
+    else:
+        raise TypeError("Input must be a NumPy array or a PyTorch tensor.")
+def has_zero(input_array):
+    """Checks for zero values in a NumPy array or a PyTorch tensor.
+
+    Args:
+        input_array: The NumPy array or PyTorch tensor to check.
+
+    Returns:
+        True if the input contains at least one zero value, False otherwise.
+    """
+
+    if isinstance(input_array, np.ndarray):
+        return (input_array == 0).any()  
+    elif isinstance(input_array, torch.Tensor):
+        # Safely handle tensors on CPU or GPU
+        return (input_array.to('cpu') == 0).any().item() 
+    else:
+        raise TypeError("Input must be a NumPy array or a PyTorch tensor.")
 def init_weights(m):
     if isinstance(m, nn.Linear):
         nn.init.kaiming_normal_(m.weight)

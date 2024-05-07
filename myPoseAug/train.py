@@ -3,6 +3,7 @@ import torch.nn as nn
 from torch.autograd import Variable
 import argparse
 from dataset import Ske_dataset
+from fcn_classifier import HeavyPoseClassifier
 from generator import PoseGenerator
 from discriminator import Pos2DDiscriminator
 from utils import init_weights
@@ -15,6 +16,7 @@ def main(args):
     start_epoch = 0
 
     ## Here comes the models
+    classi_model=HeavyPoseClassifier()
     generator = PoseGenerator(blr_tanhlimit=args.blr_tanhlimit, input_size=16 * 2,num_stage_BA=4,num_stage_BL=4,num_stage_RT=4) # only use the args.blr_tanhlimit
     discriminator = Pos2DDiscriminator(num_joints=16, kcs_channel=512, channel_mid=200)
     generator.to(device)
@@ -30,7 +32,7 @@ def main(args):
     ## for optimizer
     G_optimizer = torch.optim.Adam(generator.parameters(), lr=args.G_lr)
     D_optimizer = torch.optim.Adam(discriminator.parameters(), lr=args.D_lr)
-
+    C_optimizer = torch.optim.Adam(classi_model.parameters(), lr=args.C_lr)
 
     # create a dataset here
     trainset = Ske_dataset(csv_path=args.train)
@@ -77,21 +79,37 @@ def main(args):
             G_optimizer.step()
 
             ## training discriminator 
-            data_fake = data_fake_dict['pose_bl'].detach()  # Detach here
+            data_fake = data_fake.detach()  # Detach here
             D_optimizer.zero_grad() 
             # Recalculate adv_loss since the graph has been modified
             adv_loss, _ = get_adversarial_loss(discriminator, data_real, data_fake, gan_criterion) 
             adv_loss.backward()
             D_optimizer.step()
+
+
+            ## training classifer
+            C_optimizer.zero_grad() 
+            data_fake = data_fake.detach()  # Detach here
+            x_coords = data_fake[:,:,0]
+            y_coords = data_fake[:,:,1]
+            
+            # Calculate classification loss
+            classification_loss = get_classification_loss(data_fake,classi_model,labels,classification_criterion)
+            classification_loss.backward()
+            C_optimizer.step()
+
         plot(data_real[4],"/home/edabk/cuong/output-real","epoch")
         plot(data_fake[4],"/home/edabk/cuong/output","epoch")
         print(f"epoch_{epoch}_ganloss_{generator_loss}_advloss_{adv_loss}")
 def get_args():
+
     parser = argparse.ArgumentParser()
-    parser.add_argument("--num_epochs", type=int, default=1200, help="number of epochs of training")
+    parser.add_argument("--warmup_epochs", type=int, default=5, help="number of warm up epochs")
+    parser.add_argument("--num_epochs", type=int, default=200, help="number of epochs of training")
     parser.add_argument("--batch_size", type=int, default=64, help="size of the batches")
     parser.add_argument("--G_lr", type=float, default=0.001, help="adam: lr for generator")
     parser.add_argument("--D_lr", type=float, default=0.001, help="adam: lr for discriminator")
+    parser.add_argument("--C_lr", type=float, default=0.001, help="adam: lr for classifier")
     parser.add_argument("--blr_tanhlimit", type=float, default=2e-1, help="bone length change limit")
     parser.add_argument("--train",type=str,help="path to data train")
     parser.add_argument("--test",type=str,help="path to data test")

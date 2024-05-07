@@ -16,7 +16,7 @@ class Discriminator(nn.Module):
 
         # load graph
         self.graph = graph_ntu() if dataset == 'ntu' else Graph_h36m()
-        self.A = [torch.tensor(Al, dtype=torch.float32, requires_grad=False).cuda() for Al in self.graph.As]
+        self.A = [torch.tensor(Al, dtype=torch.float32, requires_grad=False) for Al in self.graph.As]
 
         # build networks
         spatial_kernel_size  = [A.size(0) for A in self.A]

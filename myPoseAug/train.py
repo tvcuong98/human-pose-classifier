@@ -9,17 +9,25 @@ from discriminator import Pos2DDiscriminator
 from utils import init_weights,set_grad,has_nan
 from losses import get_adversarial_loss, get_diff_loss,get_classification_loss,get_feedback_loss
 from visualization import plot
-
+import random
+import os
 # Only discriminator will be used as input
 # The generator are not used here, we assume that the data_fake have been created else where and just use it here
 def main(args):
+    # make the output files
+    output_dir        =  args.output_dir
+    runs              =  args.runs
+    runs_dir          =  os.path.join(output_dir,runs)
+    if not os.path.exists(runs_dir): os.makedirs(runs_dir)
+
+
     if torch.cuda.is_available():  device = "cuda:0"
     start_epoch = 0
 
     ## Here comes the models
     classifier = HeavyPoseClassifier()
     generator = PoseGenerator(blr_tanhlimit=args.blr_tanhlimit, input_size=16 * 2,num_stage_BA=4,num_stage_BL=4,num_stage_RT=4) # only use the args.blr_tanhlimit
-    discriminator = Pos2DDiscriminator(num_joints=16, kcs_channel=256, channel_mid=100)
+    discriminator = Pos2DDiscriminator(num_joints=16, kcs_channel=512, channel_mid=100)
     classifier.to(device)
     generator.to(device)
     discriminator.to(device)
@@ -60,6 +68,7 @@ def main(args):
     )
     logger = {
         "epoch_best_val_acc" : 0.0,
+        "best_epoch"         : 0,
         "epoch_G_loss"    : [],
         "epoch_D_loss"    :[],
         "epoch_classi_train_loss:" : [],
@@ -79,61 +88,68 @@ def main(args):
             ##################################################
             #######      Train Generator     #################
             ##################################################
-            set_grad([classifier],False)
-            set_grad([discriminator],False)
-            set_grad([generator],True)
-            G_optimizer.zero_grad()
-            data_fake_dict = generator(data_real)
-            data_fake = data_fake_dict['pose_bl']
-            adv_loss, _ = get_adversarial_loss(discriminator,data_real,data_fake,gan_criterion)
-            feedback_loss = get_feedback_loss(args,classifier,data_real,data_fake_dict,labels,epoch)
-            diff_loss = get_diff_loss(args, data_fake_dict)
-            if epoch > args.warmup:
-                G_loss = adv_loss * args.gloss_factor_adv + \
-                         feedback_loss * args.gloss_factor_feedback + \
-                         diff_loss * args.gloss_factor_diff
-            else: 
-                G_loss = adv_loss * args.gloss_factor_adv + \
-                         diff_loss * args.gloss_factor_diff
-            G_loss.backward()
-            nn.utils.clip_grad_norm_(generator.parameters(), max_norm=1)
-            G_optimizer.step()
+            if (epoch >= args.start_schedule[0] and i % args.update_schedule[0]==0):
+                set_grad([classifier],False)
+                set_grad([discriminator],False)
+                set_grad([generator],True)
+                G_optimizer.zero_grad()
+                data_fake_dict = generator(data_real)
+                data_fake = data_fake_dict['pose_bl']
+                adv_loss, _ = get_adversarial_loss(discriminator,data_real,data_fake,gan_criterion)
+                feedback_loss = get_feedback_loss(args,classifier,data_real,data_fake_dict,labels,epoch)
+                diff_loss = get_diff_loss(args, data_fake_dict)
+                if epoch > args.start_schedule[2]: # but this always happen because we are setting it to epoch 0
+                    G_loss = adv_loss * args.gloss_factor_adv + \
+                            feedback_loss * args.gloss_factor_feedback + \
+                            diff_loss * args.gloss_factor_diff
+                else: 
+                    G_loss = adv_loss * args.gloss_factor_adv + \
+                            diff_loss * args.gloss_factor_diff
+                G_loss.backward()
+                nn.utils.clip_grad_norm_(generator.parameters(), max_norm=1)
+                G_optimizer.step()
 
             ##################################################
             #######      Train Discriminator     #############
             ##################################################
-            set_grad([classifier],False)
-            set_grad([discriminator],True)
-            set_grad([generator],False)
-            data_fake = data_fake_dict['pose_bl'].detach()  # Detach here
-            D_optimizer.zero_grad() 
-            # Recalculate adv_loss since the graph has been modified
-            adv_loss, _ = get_adversarial_loss(discriminator, data_real, data_fake, gan_criterion) 
-            D_loss = adv_loss
-            D_loss.backward()
-            nn.utils.clip_grad_norm_(discriminator.parameters(), max_norm=1)
-            D_optimizer.step()
+            if (epoch >= args.start_schedule[1] and i % args.update_schedule[1]==0):
+                set_grad([classifier],False)
+                set_grad([discriminator],True)
+                set_grad([generator],False)
+                data_fake = data_fake_dict['pose_bl'].detach()  # Detach here
+                D_optimizer.zero_grad() 
+                # Recalculate adv_loss since the graph has been modified
+                adv_loss, _ = get_adversarial_loss(discriminator, data_real, data_fake, gan_criterion) 
+                D_loss = adv_loss
+                D_loss.backward()
+                nn.utils.clip_grad_norm_(discriminator.parameters(), max_norm=1)
+                D_optimizer.step()
             ##################################################
             #######      Train Classifier     #############
             ##################################################
-            set_grad([classifier],True)
-            set_grad([discriminator],False)
-            set_grad([generator],False)
-            C_optimizer.zero_grad()
-            data_fake = data_fake_dict['pose_bl'].detach()  # Detach here
-            fake_classi_loss = get_classification_loss(data_fake,classifier,labels,classification_criterion)
-            real_classi_loss = get_classification_loss(data_real,classifier,labels,classification_criterion)
-            classi_loss = real_classi_loss + fake_classi_loss
-            classi_loss.backward()
-            nn.utils.clip_grad_norm_(classifier.parameters(), max_norm=1)
-            C_optimizer.step()
-            # print statistics
-            running_loss += classi_loss.item()
-            epoch_steps += 1
-            ##################################################
-            #######      Validation Classifier     #############
-            ##################################################
-            # Validation loss
+            if (epoch >= args.start_schedule[2] and i % args.update_schedule[2]==0):
+                set_grad([classifier],True)
+                set_grad([discriminator],False)
+                set_grad([generator],False)
+                C_optimizer.zero_grad()
+                if (epoch < args.start_schedule[0]):
+                    real_classi_loss = get_classification_loss(data_real,classifier,labels,classification_criterion)
+                    classi_loss = real_classi_loss
+                else:
+                    data_fake = data_fake_dict['pose_bl'].detach()  # Detach here
+                    fake_classi_loss = get_classification_loss(data_fake,classifier,labels,classification_criterion)
+                    real_classi_loss = get_classification_loss(data_real,classifier,labels,classification_criterion)
+                    classi_loss = real_classi_loss + fake_classi_loss
+                classi_loss.backward()
+                nn.utils.clip_grad_norm_(classifier.parameters(), max_norm=1)
+                C_optimizer.step()
+                # print statistics
+                running_loss += classi_loss.item()
+                epoch_steps += 1
+        ##################################################
+        #######      Validation Classifier     #############
+        ##################################################
+        # Validation loss
         val_loss = 0.0
         val_steps = 0
         total = 0
@@ -149,16 +165,30 @@ def main(args):
 
                 loss = classification_criterion(outputs, labels)
                 val_loss += loss.cpu().numpy()
-                val_steps += 1   
-        plot(data_real[4],"/home/edabk/cuong/output-real","epoch")
-        plot(data_fake[4],"/home/edabk/cuong/output","epoch")
-        print(f"epoch_{epoch}_ganloss_{G_loss}_disloss_{D_loss}_classi_loss_{classi_loss}_val_loss_{val_loss/val_steps}_acc_{correct/total}")
-        # print(f"epoch_{epoch}_classi_loss_{running_loss/epoch_steps}")
+                val_steps += 1
+        if (logger["epoch_best_val_acc"] <  correct/total): 
+            logger["epoch_best_val_acc"] = correct/total
+            logger["best_epoch"] = epoch
+            torch.save((classifier.state_dict()),os.path.join(runs_dir,"best_ckpt.pt"))
+        rand_idx = random.randint(0, len(data_real)-1) # since both inclusive
+        if (epoch >= args.start_schedule[0]) :# starting to have data_fake
+            plot(data_fake[rand_idx],runs_dir,"fake")
+            plot(data_real[rand_idx],runs_dir,"real")
+            print(f"epoch_{epoch}_ganloss_{G_loss}_disloss_{D_loss}_classi_loss_{classi_loss}_val_loss_{val_loss/val_steps}_acc_{correct/total}")
+        else:
+            plot(data_real[rand_idx],runs_dir,"real")
+            print(f"epoch_{epoch}_classi_loss_{classi_loss}_val_loss_{val_loss/val_steps}_acc_{correct/total}")
+
+        
+    os.rename(os.path.join(runs_dir,"best_ckpt.pt"), os.path.join(runs_dir,f"best_ep_{logger['best_epoch']}_acc_{logger['epoch_best_val_acc']}.pt"))
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--warmup",type=int,default=5,help="warmup epoch")
-    parser.add_argument("--epochs", type=int, default=1200, help="number of epochs of training")
-    parser.add_argument("--batch_size", type=int, default=32, help="size of the batches")
+    parser.add_argument("--output_dir",type=str,default="./poseaug_output",help="folder for outputing result")
+    parser.add_argument("--runs",type=str,help="name each runs, for example for diffrent data. Output will be stored in <output_dir>/<runs>/")
+    parser.add_argument("--start_schedule",type=int,  nargs='+',default=[5, 5, 0],help="generator,discriminator,classifier start training at their corresponding epoch")
+    parser.add_argument("--update_schedule",type=int,  nargs='+',default=[1, 2, 1],help="generator,discriminator,classifier get trained every .. epochs. The first number are for generator, so on")
+    parser.add_argument("--epochs", type=int, default=500, help="number of epochs of training")
+    parser.add_argument("--batch_size", type=int, default=64, help="size of the batches")
     parser.add_argument("--G_lr", type=float, default=0.001, help="adam: lr for generator")
     parser.add_argument("--D_lr", type=float, default=0.001, help="adam: lr for discriminator")
     parser.add_argument("--C_lr", type=float, default=0.002, help="adam: lr for classifier")
@@ -166,8 +196,8 @@ def get_args():
     parser.add_argument('--blr_limit', default=1e-1, type=float, help='bone length change limit.')
     parser.add_argument("--train",type=str,help="path to data train")
     parser.add_argument("--test",type=str,help="path to data test")
-    parser.add_argument('--ba_range_m', default=20.5e-2, type=float, help='bone angle modification range.')
-    parser.add_argument('--ba_range_w', default=16.5e-2, type=float, help='bone angle modification range.')
+    parser.add_argument('--ba_range_m', default=15.5e-2, type=float, help='bone angle modification range.')
+    parser.add_argument('--ba_range_w', default=14.5e-2, type=float, help='bone angle modification range.')
     parser.add_argument("--hardratio_ba_s",type=float,default=3,help="starting value for hardratio ba")
     parser.add_argument("--hardratio_ba",type=float,default=5,help="ending value for hardratio ba")
     parser.add_argument("--hardratio_std_ba",type=float,default=2,help="standard deviation for hardratio ba")

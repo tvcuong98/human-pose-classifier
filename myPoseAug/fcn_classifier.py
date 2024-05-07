@@ -1,4 +1,5 @@
 import torch.nn as nn
+from visualization import plot
 class HeavyPoseClassifier(nn.Module):
     def __init__(self, input_size=32, num_classes=9, drop_out_p=0.0,hidden_dims=64): #@56
         super().__init__()

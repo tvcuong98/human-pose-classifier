@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
+from utils import has_nan,has_zero
 ### basic loss functions:
 def rectifiedL2loss(gamma, threshold):  # threshold = b
     diff = (gamma - 0) ** 2
@@ -102,15 +103,13 @@ def get_feedback_loss(args,classification_model,data_real,generator_output_dict,
         # return torch.abs(1 - torch.exp(harder - expected_hard_ratio * easier))
 
     def fix_hardratio(target_std, target_mean, harder, easier, gloss_factordiv, gloss_factorfeedback, tag=''):
-        harder_value = harder / easier
-
-        hard_std = torch.std(harder_value)
-        hard_mean = torch.mean(harder_value)
-
+        harder_value = harder / easier # this is the one that is causing nan pain in the ass
+        hard_std = torch.std(harder_value) # this will be nan, cause harder value is just a scalar number
+        hard_mean = torch.mean(harder_value) # this will be nan, cause harder value is just a scalar number
         hard_div_loss = torch.mean((hard_std - target_std) ** 2)
         hard_mean_loss = diff_range_loss(harder_value, target_mean, target_std)
-
-        return hard_div_loss * gloss_factordiv + hard_mean_loss * gloss_factorfeedback
+        result = hard_mean_loss * gloss_factorfeedback
+        return result
 
     # real_2d_pose -> classification model -> output 9 class
     real_loss = get_classification_loss(data_real,classification_model,labels,criterion,device)

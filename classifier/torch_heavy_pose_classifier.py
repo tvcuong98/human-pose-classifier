@@ -18,7 +18,7 @@ import argparse
 # python3 torch_heavy_pose_classifier.py --run mixedfullswap --n_epochs 100  --train /ske/data/kp_16_cover_modes/mixed/fullswaptrainmixed.csv --test /ske/data/kp_16_cover_modes/mixed/testmixed.csv --val /ske/data/kp_16_cover_modes/mixed/testmixed.csv
 parser = argparse.ArgumentParser()
 parser.add_argument("--run", type=str, help="the name of the run")
-parser.add_argument("--n_epochs", type=int, default=50, help="number of epochs of training")
+parser.add_argument("--n_epochs", type=int, default=500, help="number of epochs of training")
 parser.add_argument("--batch_size", type=int, default=32, help="size of the batches")
 parser.add_argument("--lr", type=float, default=0.002, help="adam: learning rate")
 parser.add_argument("--drop_p", type=float, default=0.3, help="drop_out rate")
@@ -70,6 +70,7 @@ if torch.cuda.is_available():
     # if torch.cuda.device_count() > 1:
     #     net = nn.DataParallel(net)
 net.to(device)
+print("==> Total C parameters: {:.2f}M".format(sum(p.numel() for p in net.parameters()) / 1000000.0))
 criterion = nn.CrossEntropyLoss()
 #criterion = AdMSoftmaxLoss(9, 9, s=30.0, m=0.4) 
 optimizer = optim.Adam(net.parameters(), opt.lr)
@@ -94,6 +95,8 @@ for epoch in range(opt.n_epochs):  # loop over the dataset multiple times
         optimizer.zero_grad()
         # forward + backward + optimize
         outputs = net(inputs)
+        # print(outputs)
+        # print(labels)
         #print(outputs.get_device())
         #print(labels.get_device())
         loss = criterion(outputs, labels)
@@ -115,7 +118,6 @@ for epoch in range(opt.n_epochs):  # loop over the dataset multiple times
         with torch.no_grad():
             inputs, labels = data
             inputs, labels = inputs.float().to(device), labels.type(torch.LongTensor).to(device)
-
             outputs = net(inputs)
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)

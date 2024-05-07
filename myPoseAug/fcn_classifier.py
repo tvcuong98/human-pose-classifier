@@ -34,9 +34,14 @@ class HeavyPoseClassifier(nn.Module):
         return nn.Sequential(*skip)
 
     def forward(self, x):
-        # print(x.shape)
+        x = x.view(x.size(0),-1)
         x = self.block1(x)
         x = self.block2(x) + self.skip2(x)
         x = self.block3(x) + self.skip3(x)
         x = self.block4(x)
         return x
+# import torch
+
+# data = [[1, 2], [3, 4],[5,6]]
+# tensor = torch.tensor(data)
+# print(tensor.view(-1)) 

@@ -95,6 +95,7 @@ def plot(sample,path,name): # this is for ploting 1 sample
     # sample=temp_sample
 
     sample = transform_tensor(sample)
+    # print(sample)
     if sample.shape[0] == 32:
         sample_norm = sample.reshape(1,32)[0]
         # Plot normalized coordinates

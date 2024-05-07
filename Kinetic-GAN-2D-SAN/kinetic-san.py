@@ -158,7 +158,7 @@ def compute_loss_san(disc, loss_type):
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--device", type=int, default=0, help="gpu device to use")
+    parser.add_argument("--device", type=int, default=1, help="gpu device to use")
     parser.add_argument("--model", type=str, default="san", help="model to use")
     parser.add_argument("--n_epochs", type=int, default=1200, help="number of epochs of training")
     parser.add_argument("--batch_size", type=int, default=32, help="size of the batches")
@@ -272,8 +272,8 @@ def main(opt):
             batches_done = epoch * len(dataloader) + i
             # Configure input
             imgs = imgs[:,:,:opt.t_size,:]
-            real_imgs = Variable(imgs.type(Tensor))
-            labels    = Variable(labels.type(LongTensor))
+            real_imgs = Variable(imgs.type(Tensor)).to(device)
+            labels    = Variable(labels.type(LongTensor)).to(device)
             loss_d = update_discriminator(real_imgs, labels, discriminator, generator, optimizer_D, opt)
             if i % opt.n_critic == 0:
                 loss_g = update_generator(opt.n_classes, discriminator, generator, optimizer_G, opt, device)

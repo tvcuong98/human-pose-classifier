@@ -122,7 +122,7 @@ def get_feedback_loss(args,classification_model,data_real,generator_output_dict,
     # update the hard ratio for ba and rt , according to the current epoch
     hardratio_ba = update_hardratio(args.hardratio_ba_s, args.hardratio_ba, current_epoch, args.epochs)
     #hardratio_rt = update_hardratio(args.hardratio_rt_s, args.hardratio_rt, current_epoch, args.epochs)
-    hardratio_bl = update_hardratio(args.hardratio_rt_s, args.hardratio_rt, current_epoch, args.epochs)
+    hardratio_bl = update_hardratio(args.hardratio_bl_s, args.hardratio_bl, current_epoch, args.epochs)
     # get feedback loss
     pos_fake_loss_baToReal = fix_hardratio(args.hardratio_std_ba, hardratio_ba,
                                              fake_loss_ba, real_loss,

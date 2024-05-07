@@ -14,7 +14,7 @@ from models.discriminator import Discriminator
 from feeder.feeder import Feeder
 from utils import general
 from visualization.display import plot
-
+import time
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
@@ -183,6 +183,7 @@ def compute_gradient_penalty(D, real_samples, fake_samples, labels):
 loss_d, loss_g = [], []
 batches_done   = 0
 for epoch in range(opt.n_epochs):
+    start_time = time.time()
     for i, (imgs, labels) in enumerate(dataloader):
 
         batches_done = epoch * len(dataloader) + i
@@ -246,10 +247,6 @@ for epoch in range(opt.n_epochs):
             g_loss.backward()
             optimizer_G.step()
 
-    print(
-        "[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f]"
-        % (epoch, opt.n_epochs, i, len(dataloader), d_loss.item(), g_loss.item())
-    )
 
     loss_d.append(d_loss.data.cpu())
     loss_g.append(g_loss.data.cpu())
@@ -266,6 +263,12 @@ for epoch in range(opt.n_epochs):
                       'Generator': g_loss,
                       'Discriminator': d_loss
                      }, epoch)
+    end_time = time.time()
+    epoch_time = end_time - start_time
+    print(
+        "[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f] [Time : %.2f sec]"
+        % (epoch, opt.n_epochs, i, len(dataloader) , d_loss.item(), g_loss.item(),epoch_time)
+    )
 loss_d = np.array(loss_d)
 loss_g = np.array(loss_g)
 

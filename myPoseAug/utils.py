@@ -5,6 +5,10 @@ def init_weights(m):
     if isinstance(m, nn.Linear):
         nn.init.kaiming_normal_(m.weight)
         nn.init.zeros_(m.bias) 
+def set_grad(nets, requires_grad=False):
+    for net in nets:
+        for param in net.parameters():
+            param.requires_grad = requires_grad
 def get_BoneVecbypose2d(x, num_joints=16):
     '''
     :explain: convert 2D point to bone vector

@@ -35,7 +35,7 @@ def main(args):
     ## for optimizer
     G_optimizer = torch.optim.Adam(generator.parameters(), lr=args.G_lr)
     D_optimizer = torch.optim.Adam(discriminator.parameters(), lr=args.D_lr)
-    C_optimizer = torch.optim.Adam(discriminator.parameters(), lr=args.C_lr)
+    C_optimizer = torch.optim.Adam(classifier.parameters(), lr=args.C_lr)
 
     # create a dataset here
     trainset = Ske_dataset(csv_path=args.train)

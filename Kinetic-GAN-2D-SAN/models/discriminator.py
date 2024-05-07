@@ -8,15 +8,30 @@ from .init_gan.graph_ntu import graph_ntu
 from .init_gan.graph_h36m import Graph_h36m
 import numpy as np
 
+class Mapping_Net(nn.Module):
+    def __init__(self, latent=1024, mlp=4):
+        super().__init__()
 
+        layers = []
+        for i in range(mlp):
+            linear = nn.Linear(latent, latent)
+            linear.weight.data.normal_()
+            linear.bias.data.zero_()
+            layers.append(linear)
+            # layers.append(nn.LeakyReLU(0.2))
+
+        self.mlp = nn.Sequential(*layers)
+
+    def forward(self, x):
+        return self.mlp(x)
 class Discriminator(nn.Module):
     
-    def __init__(self, in_channels, n_classes, t_size, latent, edge_importance_weighting=True, dataset='ntu', **kwargs):
+    def __init__(self, in_channels, n_classes, t_size, latent, mlp_dim=1, edge_importance_weighting=True, dataset='ntu', **kwargs):
         super().__init__()
 
         # load graph
         self.graph = graph_ntu() if dataset == 'ntu' else Graph_h36m()
-        self.A = [torch.tensor(Al, dtype=torch.float32, requires_grad=False) for Al in self.graph.As]
+        self.A = [torch.tensor(Al, dtype=torch.float32, requires_grad=False).cuda() for Al in self.graph.As]
 
         # build networks
         spatial_kernel_size  = [A.size(0) for A in self.A]
@@ -47,6 +62,8 @@ class Discriminator(nn.Module):
         self.label_emb = nn.Embedding(n_classes, n_classes)
         # adding conv layer
         self.conv = nn.Conv2d(in_channels=512, out_channels=512, kernel_size=(2, 1), stride=(2, 1), padding=0)
+        # some mlp layer
+        # self.mlp = Mapping_Net(latent, mlp_dim)
         # fcn for prediction
         self.fcn_w = nn.Parameter(torch.randn(1, latent)) # nn.Linear(1,512) 
 
@@ -71,7 +88,8 @@ class Discriminator(nn.Module):
         # Conv instead of global pooling
         # x = self.conv(x)
         x = x.view(N, -1) #(N,512)
-
+        # mlp layers
+        # x = self.mlp(x)
         h_feature = x #(N,512)
         weights = self.fcn_w
         direction = F.normalize(weights,dim=1) # Normalize the last layer

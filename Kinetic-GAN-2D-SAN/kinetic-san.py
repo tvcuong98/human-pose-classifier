@@ -8,7 +8,7 @@ from torch.autograd import Variable
 import torch.autograd as autograd
 import torch.nn.functional as F
 from shutil import copyfile
-
+import time
 from models.generator import Generator
 from models.discriminator import Discriminator
 from feeder.feeder import Feeder
@@ -267,6 +267,7 @@ def main(opt):
 
 
     for epoch in range(opt.n_epochs):
+        start_time = time.time()
         for i, (imgs, labels) in enumerate(dataloader):
             batches_done = epoch * len(dataloader) + i
             # Configure input
@@ -277,10 +278,7 @@ def main(opt):
             if i % opt.n_critic == 0:
                 loss_g = update_generator(opt.n_classes, discriminator, generator, optimizer_G, opt, device)
 
-        print(
-            "[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f]"
-            % (epoch, opt.n_epochs, i, n_iters_per_epoch , loss_d.item(), loss_g.item())
-        )
+
         loss_ds.append(loss_d.data.cpu())
         loss_gs.append(loss_g.data.cpu())
 
@@ -293,8 +291,12 @@ def main(opt):
         writer.add_scalar('Loss/generator', loss_g, epoch)
         writer.add_scalar('Loss/discriminator', loss_d, epoch)
         writer.add_scalars('Loss/gen_dis', {'Generator':loss_g,'Discriminator': loss_d}, epoch)
-
-
+        end_time = time.time()
+        epoch_time = end_time - start_time
+        print(
+            "[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f] [Time : %.2f sec]"
+            % (epoch, opt.n_epochs, i, n_iters_per_epoch , loss_d.item(), loss_g.item(),epoch_time)
+        )
     #     # eval
     #     with torch.no_grad():
     #         latent = torch.randn(num_samples_per_class * num_class, params["dim_latent"]).cuda()

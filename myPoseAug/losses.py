@@ -86,7 +86,6 @@ def get_feedback_loss(args,classification_model,data_real,generator_output_dict,
     INPUT:
     : args : hardratio_ba_s, hardratio_ba, 
     : args : hardratio_rt_s, hardratio_rt,
-    : args : hardratio_std_ba, hardratio_rt,
     : args : hardratio_std_ba, gloss_factordiv_ba, gloss_factorfeedback_ba
     : args : hardratio_std_rt, gloss_factordiv_rt, gloss_factorfeedback_rt
     : classification_model : is our classification model, should be set to train mode first
@@ -118,19 +117,22 @@ def get_feedback_loss(args,classification_model,data_real,generator_output_dict,
     # fake_2d_pose_after_BA - > classification model -> output 9 class
     fake_loss_ba = get_classification_loss(generator_output_dict['pose_ba'],classification_model,labels,criterion,device)
     # fake_2d_pose_after_RT - > classification model -> output 9 class
-    fake_loss_rt = get_classification_loss(generator_output_dict['pose_rt'],classification_model,labels,criterion,device)
-
+    #fake_loss_rt = get_classification_loss(generator_output_dict['pose_rt'],classification_model,labels,criterion,device)
+    fake_loss_bl = get_classification_loss(generator_output_dict['pose_bl'],classification_model,labels,criterion,device)
     # update the hard ratio for ba and rt , according to the current epoch
     hardratio_ba = update_hardratio(args.hardratio_ba_s, args.hardratio_ba, current_epoch, args.epochs)
-    hardratio_rt = update_hardratio(args.hardratio_rt_s, args.hardratio_rt, current_epoch, args.epochs)
-    
+    #hardratio_rt = update_hardratio(args.hardratio_rt_s, args.hardratio_rt, current_epoch, args.epochs)
+    hardratio_bl = update_hardratio(args.hardratio_rt_s, args.hardratio_rt, current_epoch, args.epochs)
     # get feedback loss
     pos_fake_loss_baToReal = fix_hardratio(args.hardratio_std_ba, hardratio_ba,
                                              fake_loss_ba, real_loss,
                                              args.gloss_factordiv_ba, args.gloss_factorfeedback_ba, tag='ba')
-    pos_fake_loss_rtToReal  = fix_hardratio(args.hardratio_std_rt, hardratio_rt,
-                                             fake_loss_rt, real_loss,
-                                             args.gloss_factordiv_rt, args.gloss_factorfeedback_rt, tag='rt')
-
-    feedback_loss = pos_fake_loss_baToReal + pos_fake_loss_rtToReal
+    # pos_fake_loss_rtToReal  = fix_hardratio(args.hardratio_std_rt, hardratio_rt,
+    #                                          fake_loss_rt, real_loss,
+    #                                          args.gloss_factordiv_rt, args.gloss_factorfeedback_rt, tag='rt')
+    pos_fake_loss_blToReal  = fix_hardratio(args.hardratio_std_bl, hardratio_bl,
+                                             fake_loss_bl, real_loss,
+                                             args.gloss_factordiv_bl, args.gloss_factorfeedback_bl, tag='bl')
+    # feedback_loss = pos_fake_loss_baToReal + pos_fake_loss_rtToReal
+    feedback_loss = pos_fake_loss_baToReal + pos_fake_loss_blToReal
     return feedback_loss

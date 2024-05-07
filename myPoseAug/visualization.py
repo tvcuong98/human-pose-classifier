@@ -77,7 +77,7 @@ def transform_tensor(input_tensor):
     numpy_array = input_tensor.numpy()
 
     # Reshape to (2, 16)
-    numpy_array = numpy_array.reshape(2, 16)
+    numpy_array = np.transpose(numpy_array, (1, 0)) # reshape is diffrent from transpose
 
     # Interleave coordinates to (32,)
     x_coordinates = numpy_array[0]

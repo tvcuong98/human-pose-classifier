@@ -15,8 +15,8 @@ def main(args):
     start_epoch = 0
 
     ## Here comes the models
-    generator = PoseGenerator(blr_tanhlimit=args.blr_tanhlimit, input_size=16 * 2) # only use the args.blr_tanhlimit
-    discriminator = Pos2DDiscriminator(num_joints=16, kcs_channel=256, channel_mid=100)
+    generator = PoseGenerator(blr_tanhlimit=args.blr_tanhlimit, input_size=16 * 2,num_stage_BA=4,num_stage_BL=4,num_stage_RT=4) # only use the args.blr_tanhlimit
+    discriminator = Pos2DDiscriminator(num_joints=16, kcs_channel=512, channel_mid=200)
     generator.to(device)
     discriminator.to(device)
     generator.apply(init_weights)
@@ -71,27 +71,40 @@ def main(args):
             ### training generator 
             G_optimizer.zero_grad()
             data_fake_dict = generator(data_real)
-            data_fake = data_fake_dict['pose_rt']
+            data_fake = data_fake_dict['pose_bl']
             _, generator_loss = get_adversarial_loss(discriminator,data_real,data_fake,gan_criterion)
             generator_loss.backward()
             G_optimizer.step()
 
             ## training discriminator 
-            data_fake = data_fake_dict['pose_rt'].detach()  # Detach here
+            data_fake = data_fake_dict['pose_bl'].detach()  # Detach here
             D_optimizer.zero_grad() 
             # Recalculate adv_loss since the graph has been modified
             adv_loss, _ = get_adversarial_loss(discriminator, data_real, data_fake, gan_criterion) 
             adv_loss.backward()
             D_optimizer.step()
+        plot(data_real[4],"/home/edabk/cuong/output-real","epoch")
+        plot(data_fake[4],"/home/edabk/cuong/output","epoch")
+        print(f"epoch_{epoch}_ganloss_{generator_loss}_advloss_{adv_loss}")
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--num_epochs", type=int, default=1200, help="number of epochs of training")
     parser.add_argument("--batch_size", type=int, default=64, help="size of the batches")
-    parser.add_argument("--G_lr", type=float, default=0.0002, help="adam: lr for generator")
-    parser.add_argument("--D_lr", type=float, default=0.0001, help="adam: lr for discriminator")
+    parser.add_argument("--G_lr", type=float, default=0.001, help="adam: lr for generator")
+    parser.add_argument("--D_lr", type=float, default=0.001, help="adam: lr for discriminator")
     parser.add_argument("--blr_tanhlimit", type=float, default=2e-1, help="bone length change limit")
-    parser.add_argument("--train",type=str,help="path to the output folder")
-    parser.add_argument("--test",type=str,help="path to the output folder of tensorboard")
+    parser.add_argument("--train",type=str,help="path to data train")
+    parser.add_argument("--test",type=str,help="path to data test")
+    parser.add_argument("--hardratio_ba_s",type=float,default=3,help="starting value for hardratio ba")
+    parser.add_argument("--hardratio_ba",type=float,default=5,help="ending value for hardratio ba")
+    parser.add_argument("--hardratio_std_ba",type=float,default=2,help="standard deviation for hardratio ba")
+    parser.add_argument("--gloss_factordiv_ba",type=float,default=0.,help="factor for range difference loss")
+    parser.add_argument('--gloss_factorfeedback_ba', default=1e-1, type=float, help='factor for feedback loss from ba.')
+    parser.add_argument("--hardratio_bl_s",type=float,default=3,help="starting value for hardratio rt")
+    parser.add_argument("--hardratio_bl",type=float,default=5,help="ending value for hardratio rt")
+    parser.add_argument("--hardratio_std_bl",type=float,default=2,help="standard deviation for hardratio rt")
+    parser.add_argument('--gloss_factordiv_bl', default=0., type=float, help='factor for range difference loss')
+    parser.add_argument('--gloss_factorfeedback_bl', default=1e-1, type=float, help='factor for feedback loss from bl.')
     opt = parser.parse_args()
     return opt
 if __name__ == '__main__':

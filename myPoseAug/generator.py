@@ -35,11 +35,14 @@ class Linear(nn.Module):
 ###################  START  ##########################
 ######################################################
 class PoseGenerator(nn.Module):
-    def __init__(self, blr_tanhlimit, input_size=16 * 2):
+    def __init__(self, blr_tanhlimit, input_size=16 * 2,num_stage_BA=2,num_stage_BL=2,num_stage_RT=2):
         super(PoseGenerator, self).__init__()
-        self.BAprocess = BAGenerator(input_size=input_size)
-        self.BLprocess = BLGenerator(input_size=input_size, blr_tanhlimit=blr_tanhlimit)
-        self.RTprocess = RTGenerator(input_size=input_size)
+        self.num_stage_BA = num_stage_BA
+        self.num_stage_BL = num_stage_BL
+        self.num_stage_RT = num_stage_RT
+        self.BAprocess = BAGenerator(input_size=input_size,num_stage=num_stage_BA)
+        self.BLprocess = BLGenerator(input_size=input_size, blr_tanhlimit=blr_tanhlimit,num_stage=num_stage_BL)
+        # self.RTprocess = RTGenerator(input_size=input_size,num_stage=num_stage_RT)
 
     def forward(self, inputs_2d):
         '''
@@ -49,14 +52,15 @@ class PoseGenerator(nn.Module):
         '''
         pose_ba, ba_diff = self.BAprocess(inputs_2d)  # diff may be used for div loss
         pose_bl, blr = self.BLprocess(inputs_2d, pose_ba)  # blr used for debug
-        pose_rt, rt = self.RTprocess(inputs_2d, pose_bl)  # rt=(r,t) used for debug
+        # pose_rt, rt = self.RTprocess(inputs_2d, pose_bl)  # rt=(r,t) used for debug
 
         return {'pose_ba': pose_ba,
                 'ba_diff': ba_diff,
                 'pose_bl': pose_bl,
                 'blr': blr,
-                'pose_rt': pose_rt,
-                'rt': rt}
+                # 'pose_rt': pose_rt,
+                # 'rt': rt
+                }
 ######################################################
 ###################  END  ############################
 ######################################################

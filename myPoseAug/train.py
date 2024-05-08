@@ -3,6 +3,7 @@ import torch.nn as nn
 from torch.autograd import Variable
 import argparse
 from fcn_classifier import HeavyPoseClassifier
+from gcn_classifier import RobustPoseClassifier
 from dataset import Ske_dataset
 from generator import PoseGenerator
 from discriminator import Pos2DDiscriminator
@@ -13,8 +14,9 @@ import random
 import os
 
 ############################ SAMPLE USAGE :
-#python train.py --runs cover2 --epochs 500 --batch_size 64 --train /home/edabk/cuong/human-pose-classifier/data/kp_16_cover_modes/cover2/traincover2.csv --test /home/edabk/cuong/human-pose-classifier/data/kp_16_cover_modes/cover2/testcover2.csv
-############################ GOOD LUCK
+#CUDA_VISIBLE_DEVICES=0 python train.py --model fcn --hidden_dims 64 --epochs 1000 --batch_size 64 --runs --train --test 
+#CUDA_VISIBLE_DEVICES=0 python train.py --model gcn --hidden_dims 512 --epochs 1000 --batch_size 64 --runs --train --test
+########################## GOOD LUCK
 # Only discriminator will be used as input
 # The generator are not used here, we assume that the data_fake have been created else where and just use it here
 def main(args):
@@ -29,7 +31,10 @@ def main(args):
     start_epoch = 0
 
     ## Here comes the models
-    classifier = HeavyPoseClassifier()
+    if args.model =="fcn":
+        classifier = HeavyPoseClassifier(hidden_dims=args.hidden_dims)
+    elif args.model =="gcn":
+        classifier = RobustPoseClassifier(in_channels=2, n_classes=9, t_size=1, latent=args.hidden_dims)
     generator = PoseGenerator(blr_tanhlimit=args.blr_tanhlimit, input_size=16 * 2,num_stage_BA=4,num_stage_BL=4,num_stage_RT=4) # only use the args.blr_tanhlimit
     discriminator = Pos2DDiscriminator(num_joints=16, kcs_channel=256, channel_mid=100)
     classifier.to(device)
@@ -188,6 +193,8 @@ def main(args):
     print(logger)
 def get_args():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--hidden_dims",type=int,help="the number of hidden nodes, it depends on the model too")
+    parser.add_argument("--model",type=str,help="either gcn or fcn")
     parser.add_argument("--output_dir",type=str,default="./poseaug_output",help="folder for outputing result")
     parser.add_argument("--runs",type=str,help="name each runs, for example for diffrent data. Output will be stored in <output_dir>/<runs>/")
     parser.add_argument("--start_schedule",type=int,  nargs='+',default=[1, 1, 0],help="generator,discriminator,classifier start training at their corresponding epoch")

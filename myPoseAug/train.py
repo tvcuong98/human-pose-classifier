@@ -12,7 +12,8 @@ from losses import get_adversarial_loss, get_diff_loss,get_classification_loss,g
 from visualization import plot
 import random
 import os
-
+import time
+from torch.utils.tensorboard import SummaryWriter
 ############################ SAMPLE USAGE :
 #CUDA_VISIBLE_DEVICES=0 python train.py --model fcn --hidden_dims 64 --epochs 1000 --batch_size 64 --runs --train --test 
 #CUDA_VISIBLE_DEVICES=0 python train.py --model gcn --hidden_dims 512 --epochs 1000 --batch_size 64 --runs --train --test
@@ -24,8 +25,11 @@ def main(args):
     output_dir        =  args.output_dir
     runs              =  args.runs
     runs_dir          =  os.path.join(output_dir,runs)
+    tb_runs_dir       =  os.path.join(runs_dir,args.tb_runs)
     if not os.path.exists(runs_dir): os.makedirs(runs_dir)
-
+    if not os.path.exists(tb_runs_dir): os.makedirs(tb_runs_dir)
+    log_dir = tb_runs_dir
+    writer = SummaryWriter(log_dir=log_dir) 
 
     if torch.cuda.is_available():  device = "cuda:0"
     start_epoch = 0
@@ -78,6 +82,7 @@ def main(args):
     logger = {
         "epoch_best_val_acc" : 0.0,
         "best_epoch"         : 0,
+        "best_model"      : None,
         "epoch_G_loss"    : [],
         "epoch_D_loss"    :[],
         "epoch_classi_train_loss:" : [],
@@ -87,8 +92,17 @@ def main(args):
     }
 
     for epoch in range(start_epoch,args.epochs):
-        running_loss = 0.0
-        epoch_steps = 0
+        start_time = time.time()
+        running_loss = {"adv_loss": 0.0,
+                        "feedback_loss": 0.0,
+                        "diff_loss": 0.0,
+                        "G_loss": 0.0,
+                        "D_loss": 0.0,
+                        "C_loss": 0.0
+                        }
+        epoch_steps = {"generator_steps":0,
+                       "discriminator_steps":0,
+                       "classifier_steps":0}
         #### training generator and discriminator for GAN #####
         #### training generator 
         for i, data in enumerate(trainloader):
@@ -118,6 +132,15 @@ def main(args):
                 nn.utils.clip_grad_norm_(generator.parameters(), max_norm=1)
                 G_optimizer.step()
 
+                # This is the part where we sum the loss up for logging
+                running_loss["adv_loss"] += adv_loss.item()
+                running_loss["feedback_loss"] += feedback_loss.item()
+                running_loss["diff_loss"] += diff_loss.item()
+                running_loss["G_loss"] += G_loss.item()
+                epoch_steps["generator_steps"] += 1
+
+
+
             ##################################################
             #######      Train Discriminator     #############
             ##################################################
@@ -134,6 +157,10 @@ def main(args):
                 D_loss.backward()
                 nn.utils.clip_grad_norm_(discriminator.parameters(), max_norm=1)
                 D_optimizer.step()
+                # This is the part where we sum the loss up for logging
+                running_loss["D_loss"] += D_loss.item()
+                epoch_steps["discriminator_steps"] += 1
+
             ##################################################
             #######      Train Classifier     #############
             ##################################################
@@ -154,9 +181,9 @@ def main(args):
                 classi_loss.backward()
                 nn.utils.clip_grad_norm_(classifier.parameters(), max_norm=1)
                 C_optimizer.step()
-                # print statistics
-                running_loss += classi_loss.item()
-                epoch_steps += 1
+                # This is the part where we sum the loss up for logging
+                running_loss["C_loss"] += classi_loss.item()
+                epoch_steps["classifier_steps"] += 1
         ##################################################
         #######      Validation Classifier     #############
         ##################################################
@@ -177,21 +204,54 @@ def main(args):
                 loss = classification_criterion(outputs, labels)
                 val_loss += loss.cpu().numpy()
                 val_steps += 1
+        ##################################################
+        #######      Logging after each epoc    #############
+        ##################################################
+
+
+        ##################################################
+        #######      Logging in Tensorboard    #############
+        ##################################################     
+        epoch_adv_loss = running_loss["adv_loss"]/epoch_steps["generator_steps"]
+        epoch_feedback_loss = running_loss["feedback_loss"]/epoch_steps["generator_steps"]
+        epoch_diff_loss = running_loss["diff_loss"]/epoch_steps["generator_steps"]
+        epoch_G_loss = running_loss["G_loss"]/epoch_steps["generator_steps"]
+        epoch_D_loss = running_loss["D_loss"]/epoch_steps["discriminator_steps"]
+        epoch_C_loss = running_loss["C_loss"]/epoch_steps["classifier_steps"]
+        writer.add_scalars('Losses', {
+                      'G_adv_loss': epoch_adv_loss,
+                      'G_fb_loss': epoch_feedback_loss,
+                      'G_diff_loss': epoch_diff_loss,
+                      'G_loss': epoch_G_loss,
+                      'D_loss': epoch_D_loss,
+                      'C_loss': epoch_C_loss,
+                     }, epoch)
+        ##################################################
+        #######      Logging for saving best, printing    #############
+        ##################################################   
         if (logger["epoch_best_val_acc"] <  correct/total): 
             logger["epoch_best_val_acc"] = correct/total
             logger["best_epoch"] = epoch
-            torch.save((classifier.state_dict()),os.path.join(runs_dir,"best_ckpt.pt"))
+            logger["best_model"] = classifier
+        end_time = time.time()
+        epoch_time = end_time - start_time
         rand_idx = random.randint(0, len(data_real)-1) # since both inclusive
         if (epoch >= args.start_schedule[0]) :# starting to have data_fake
             plot(data_fake[rand_idx],runs_dir,"fake")
             plot(data_real[rand_idx],runs_dir,"real")
-            print(f"epoch_{epoch}_ganloss_{G_loss}_disloss_{D_loss}_classi_loss_{classi_loss}_val_loss_{val_loss/val_steps}_acc_{correct/total}")
+            print(
+                "[Epoch %d/%d] [D loss: %.4f] [G loss: %.4f] [C loss: %.4f] [Acc: %.4f] [Time : %.2f sec]"
+                % (epoch, args.epochs, epoch_D_loss, epoch_G_loss,epoch_C_loss,correct/total,epoch_time)
+            )
         else:
             plot(data_real[rand_idx],runs_dir,"real")
-            print(f"epoch_{epoch}_classi_loss_{classi_loss}_val_loss_{val_loss/val_steps}_acc_{correct/total}")
+            print(
+                "[Epoch %d/%d] [C loss: %.4f] [Acc: %.4f] [Time : %.2f sec]"
+                % (epoch,args.epochs,epoch_C_loss,correct/total,epoch_time)
+            )
 
-        
-    os.rename(os.path.join(runs_dir,"best_ckpt.pt"), os.path.join(runs_dir,f"best_ep_{logger['best_epoch']}_acc_{logger['epoch_best_val_acc']}.pt"))
+    best_model_save_file = f"best_ep_{logger['best_epoch']}_acc_{logger['epoch_best_val_acc']}.pt"
+    torch.save((logger["best_model"].state_dict()),os.path.join(runs_dir,best_model_save_file))
     print(logger)
 def get_args():
     parser = argparse.ArgumentParser()
@@ -199,6 +259,7 @@ def get_args():
     parser.add_argument("--model",type=str,help="either gcn or fcn")
     parser.add_argument("--output_dir",type=str,default="./poseaug_output",help="folder for outputing result")
     parser.add_argument("--runs",type=str,help="name each runs, for example for diffrent data. Output will be stored in <output_dir>/<runs>/")
+    parser.add_argument("--tb_runs",type=str,default="tensorboard",help="the tensorboard directory, located inside the <runs> folder")
     parser.add_argument("--start_schedule",type=int,  nargs='+',default=[1, 1, 0],help="generator,discriminator,classifier start training at their corresponding epoch")
     parser.add_argument("--update_schedule",type=int,  nargs='+',default=[1, 1, 1],help="generator,discriminator,classifier get trained every .. epochs. The first number are for generator, so on")
     parser.add_argument("--epochs", type=int, default=1000, help="number of epochs of training")

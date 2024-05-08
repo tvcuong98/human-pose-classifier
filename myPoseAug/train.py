@@ -211,21 +211,27 @@ def main(args):
 
         ##################################################
         #######      Logging in Tensorboard    #############
-        ##################################################     
-        epoch_adv_loss = running_loss["adv_loss"]/epoch_steps["generator_steps"]
-        epoch_feedback_loss = running_loss["feedback_loss"]/epoch_steps["generator_steps"]
-        epoch_diff_loss = running_loss["diff_loss"]/epoch_steps["generator_steps"]
-        epoch_G_loss = running_loss["G_loss"]/epoch_steps["generator_steps"]
-        epoch_D_loss = running_loss["D_loss"]/epoch_steps["discriminator_steps"]
-        epoch_C_loss = running_loss["C_loss"]/epoch_steps["classifier_steps"]
-        writer.add_scalars('Losses', {
-                      'G_adv_loss': epoch_adv_loss,
-                      'G_fb_loss': epoch_feedback_loss,
-                      'G_diff_loss': epoch_diff_loss,
-                      'G_loss': epoch_G_loss,
-                      'D_loss': epoch_D_loss,
-                      'C_loss': epoch_C_loss,
-                     }, epoch)
+        ##################################################
+        if (epoch >= args.start_schedule[0]) :# starting to have data_fake, the gen and dis start training    
+            epoch_adv_loss = running_loss["adv_loss"]/epoch_steps["generator_steps"]
+            epoch_feedback_loss = running_loss["feedback_loss"]/epoch_steps["generator_steps"]
+            epoch_diff_loss = running_loss["diff_loss"]/epoch_steps["generator_steps"]
+            epoch_G_loss = running_loss["G_loss"]/epoch_steps["generator_steps"]
+            epoch_D_loss = running_loss["D_loss"]/epoch_steps["discriminator_steps"]
+            epoch_C_loss = running_loss["C_loss"]/epoch_steps["classifier_steps"]
+            writer.add_scalars('Losses', {
+                        'G_adv_loss': epoch_adv_loss,
+                        'G_fb_loss': epoch_feedback_loss,
+                        'G_diff_loss': epoch_diff_loss,
+                        'G_loss': epoch_G_loss,
+                        'D_loss': epoch_D_loss,
+                        'C_loss': epoch_C_loss,
+                        }, epoch)
+        else: # the gen and dis have not start training:
+            epoch_C_loss = running_loss["C_loss"]/epoch_steps["classifier_steps"]
+            writer.add_scalars('Losses', {
+                        'C_loss': epoch_C_loss,
+                        }, epoch)
         ##################################################
         #######      Logging for saving best, printing    #############
         ##################################################   
@@ -240,8 +246,8 @@ def main(args):
             plot(data_fake[rand_idx],runs_dir,"fake")
             plot(data_real[rand_idx],runs_dir,"real")
             print(
-                "[Epoch %d/%d] [D loss: %.4f] [G loss: %.4f] [C loss: %.4f] [Acc: %.4f] [Time : %.2f sec]"
-                % (epoch, args.epochs, epoch_D_loss, epoch_G_loss,epoch_C_loss,correct/total,epoch_time)
+                "[Epoch %d/%d] [D loss: %.4f] [G_adv loss: %.4f] [G_fb loss: %.4f] [G_diff loss: %.4f] [G loss: %.4f] [C loss: %.4f] [Acc: %.4f] [Time : %.2f sec]"
+                % (epoch, args.epochs, epoch_D_loss, epoch_adv_loss,epoch_feedback_loss,epoch_diff_loss,epoch_G_loss,epoch_C_loss,correct/total,epoch_time)
             )
         else:
             plot(data_real[rand_idx],runs_dir,"real")

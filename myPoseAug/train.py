@@ -125,7 +125,8 @@ def main(args):
                 set_grad([classifier],False)
                 set_grad([discriminator],True)
                 set_grad([generator],False)
-                data_fake = data_fake_dict['pose_bl'].detach()  # Detach here
+                data_fake_dict = generator(data_real)
+                data_fake = data_fake_dict['pose_bl']
                 D_optimizer.zero_grad() 
                 # Recalculate adv_loss since the graph has been modified
                 adv_loss, _ = get_adversarial_loss(discriminator, data_real, data_fake, gan_criterion) 
@@ -145,7 +146,8 @@ def main(args):
                     real_classi_loss = get_classification_loss(data_real,classifier,labels,classification_criterion)
                     classi_loss = real_classi_loss
                 else:
-                    data_fake = data_fake_dict['pose_bl'].detach()  # Detach here
+                    data_fake_dict = generator(data_real)
+                    data_fake = data_fake_dict['pose_bl']
                     fake_classi_loss = get_classification_loss(data_fake,classifier,labels,classification_criterion)
                     real_classi_loss = get_classification_loss(data_real,classifier,labels,classification_criterion)
                     classi_loss = real_classi_loss + fake_classi_loss
@@ -222,7 +224,7 @@ def get_args():
     parser.add_argument('--gloss_factorfeedback_bl', default=1e-1, type=float, help='factor for feedback loss from bl.')
     parser.add_argument('--gloss_factor_adv',default=6,type=float,help="factor for adversarial loss in gen loss function")
     parser.add_argument('--gloss_factor_diff',default=3,type=float,help="factor for diff loss in gen loss function")
-    parser.add_argument('--gloss_factor_feedback',default=1.5,type=float,help="factor for feedback loss in gen loss function")
+    parser.add_argument('--gloss_factor_feedback',default=1,type=float,help="factor for feedback loss in gen loss function")
     opt = parser.parse_args()
     return opt
 if __name__ == '__main__':

@@ -212,6 +212,8 @@ def main(args):
         ##################################################
         #######      Logging in Tensorboard    #############
         ##################################################
+        epoch_val_C_loss = val_loss / val_steps
+        epoch_accuracy = correct/total
         if (epoch >= args.start_schedule[0]) :# starting to have data_fake, the gen and dis start training    
             epoch_adv_loss = running_loss["adv_loss"]/epoch_steps["generator_steps"]
             epoch_feedback_loss = running_loss["feedback_loss"]/epoch_steps["generator_steps"]
@@ -226,11 +228,15 @@ def main(args):
                         'G_loss': epoch_G_loss,
                         'D_loss': epoch_D_loss,
                         'C_loss': epoch_C_loss,
+                        'val_C_loss': epoch_val_C_loss,
+                        'val_C_acc' : epoch_accuracy
                         }, epoch)
         else: # the gen and dis have not start training:
             epoch_C_loss = running_loss["C_loss"]/epoch_steps["classifier_steps"]
             writer.add_scalars('Losses', {
                         'C_loss': epoch_C_loss,
+                        'val_C_loss': epoch_val_C_loss,
+                        'val_C_acc' : epoch_accuracy
                         }, epoch)
         ##################################################
         #######      Logging for saving best, printing    #############
@@ -246,14 +252,14 @@ def main(args):
             plot(data_fake[rand_idx],runs_dir,"fake")
             plot(data_real[rand_idx],runs_dir,"real")
             print(
-                "[Epoch %d/%d] [D loss: %.4f] [G_adv loss: %.4f] [G_fb loss: %.4f] [G_diff loss: %.4f] [G loss: %.4f] [C loss: %.4f] [Acc: %.4f] [Time : %.2f sec]"
-                % (epoch, args.epochs, epoch_D_loss, epoch_adv_loss,epoch_feedback_loss,epoch_diff_loss,epoch_G_loss,epoch_C_loss,correct/total,epoch_time)
+                "[Epoch %d/%d] [D loss: %.4f] [G_adv loss: %.4f] [G_fb loss: %.4f] [G_diff loss: %.4f] [G loss: %.4f] [C loss: %.4f] [C vloss: %.4f] [Acc: %.4f] [Time : %.2f sec]"
+                % (epoch, args.epochs, epoch_D_loss, epoch_adv_loss,epoch_feedback_loss,epoch_diff_loss,epoch_G_loss,epoch_C_loss,epoch_val_C_loss,epoch_accuracy,epoch_time)
             )
         else:
             plot(data_real[rand_idx],runs_dir,"real")
             print(
-                "[Epoch %d/%d] [C loss: %.4f] [Acc: %.4f] [Time : %.2f sec]"
-                % (epoch,args.epochs,epoch_C_loss,correct/total,epoch_time)
+                "[Epoch %d/%d] [C loss: %.4f] [C vloss: %.4f] [Acc: %.4f] [Time : %.2f sec]"
+                % (epoch,args.epochs,epoch_C_loss,epoch_val_C_loss,epoch_accuracy,epoch_time)
             )
 
     best_model_save_file = f"best_ep_{logger['best_epoch']}_acc_{logger['epoch_best_val_acc']}.pt"

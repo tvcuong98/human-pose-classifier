@@ -102,14 +102,21 @@ def get_feedback_loss(args,classification_model,data_real,generator_output_dict,
     # def fix_hard_ratio_loss(expected_hard_ratio, harder, easier):  # similar to MSE
         # return torch.abs(1 - torch.exp(harder - expected_hard_ratio * easier))
 
-    def fix_hardratio(target_std, target_mean, harder, easier, gloss_factordiv, gloss_factorfeedback, tag=''):
-        harder_value = harder / easier # this is the one that is causing nan pain in the ass
-        hard_std = torch.std(harder_value) # this will be nan, cause harder value is just a scalar number
-        hard_mean = torch.mean(harder_value) # this will be nan, cause harder value is just a scalar number
-        hard_div_loss = torch.mean((hard_std - target_std) ** 2)
-        hard_mean_loss = diff_range_loss(harder_value, target_mean, target_std)
-        result = hard_mean_loss * gloss_factorfeedback
-        return result
+    # def fix_hardratio(target_std, target_mean, harder, easier, gloss_factordiv, gloss_factorfeedback, tag=''):
+    #     harder_value = harder / easier # this is the one that is causing nan pain in the ass
+    #     hard_std = torch.std(harder_value) # this will be nan, cause harder value is just a scalar number
+    #     hard_mean = torch.mean(harder_value) # this will be nan, cause harder value is just a scalar number
+    #     hard_div_loss = torch.mean((hard_std - target_std) ** 2)
+    #     hard_mean_loss = diff_range_loss(harder_value, target_mean, target_std)
+    #     result = hard_mean_loss * gloss_factorfeedback
+    #     return result
+    def fix_hardratio(target_std, hard_ratio, fake_loss, real_loss, gloss_factordiv, gloss_factorfeedback, tag=''):
+        fake_loss = fake_loss.detach()
+        real_loss = real_loss.detach()
+        
+        hard_loss = torch.abs(1.0 - torch.exp(fake_loss- hard_ratio * real_loss))
+        return hard_loss * gloss_factorfeedback
+
 
     # real_2d_pose -> classification model -> output 9 class
     real_loss = get_classification_loss(data_real,classification_model,labels,criterion,device)

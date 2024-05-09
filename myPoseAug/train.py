@@ -297,7 +297,7 @@ def get_args():
     parser.add_argument('--gloss_factorfeedback_bl', default=1e-1, type=float, help='factor for feedback loss from bl.')
     parser.add_argument('--gloss_factor_adv',default=6,type=float,help="factor for adversarial loss in gen loss function")
     parser.add_argument('--gloss_factor_diff',default=3,type=float,help="factor for diff loss in gen loss function")
-    parser.add_argument('--gloss_factor_feedback',default=1,type=float,help="factor for feedback loss in gen loss function")
+    parser.add_argument('--gloss_factor_feedback',default=0.5,type=float,help="factor for feedback loss in gen loss function")
     opt = parser.parse_args()
     return opt
 if __name__ == '__main__':

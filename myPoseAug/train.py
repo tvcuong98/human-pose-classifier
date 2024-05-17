@@ -212,33 +212,36 @@ def main(args):
         ##################################################
         #######      Logging in Tensorboard    #############
         ##################################################
+        epoch_C_loss = running_loss["C_loss"]/epoch_steps["classifier_steps"]
         epoch_val_C_loss = val_loss / val_steps
         epoch_accuracy = correct/total
+        writer.add_scalars('Losses', {
+                        'C_loss': epoch_C_loss,
+                        'val_C_loss': epoch_val_C_loss,
+                        'val_C_acc' : epoch_accuracy
+                        }, epoch)
+        writer.add_scalar('Losses/C_loss', epoch_C_loss,epoch)
+        writer.add_scalar('Losses/val_C_loss', epoch_val_C_loss,epoch)
+        writer.add_scalar('Losses/val_C_acc', epoch_accuracy,epoch)
         if (epoch >= args.start_schedule[0]) :# starting to have data_fake, the gen and dis start training    
             epoch_adv_loss = running_loss["adv_loss"]/epoch_steps["generator_steps"]
             epoch_feedback_loss = running_loss["feedback_loss"]/epoch_steps["generator_steps"]
             epoch_diff_loss = running_loss["diff_loss"]/epoch_steps["generator_steps"]
             epoch_G_loss = running_loss["G_loss"]/epoch_steps["generator_steps"]
             epoch_D_loss = running_loss["D_loss"]/epoch_steps["discriminator_steps"]
-            epoch_C_loss = running_loss["C_loss"]/epoch_steps["classifier_steps"]
             writer.add_scalars('Losses', {
                         'G_adv_loss': epoch_adv_loss,
                         'G_fb_loss': epoch_feedback_loss,
                         'G_diff_loss': epoch_diff_loss,
                         'G_loss': epoch_G_loss,
                         'D_loss': epoch_D_loss,
-                        'C_loss': epoch_C_loss,
-                        'val_C_loss': epoch_val_C_loss,
-                        'val_C_acc' : epoch_accuracy
                         }, epoch)
-        else: # the gen and dis have not start training:
-            epoch_C_loss = running_loss["C_loss"]/epoch_steps["classifier_steps"]
-            writer.add_scalars('Losses', {
-                        'C_loss': epoch_C_loss,
-                        'val_C_loss': epoch_val_C_loss,
-                        'val_C_acc' : epoch_accuracy
-                        }, epoch)
-        ##################################################
+            writer.add_scalar('Losses/G_adv_loss', epoch_adv_loss,epoch)
+            writer.add_scalar('Losses/G_fb_loss', epoch_feedback_loss,epoch)
+            writer.add_scalar('Losses/G_diff_loss', epoch_diff_loss,epoch)
+            writer.add_scalar('Losses/G_loss', epoch_G_loss,epoch)
+            writer.add_scalar('Losses/D_loss', epoch_D_loss,epoch)
+######################
         #######      Logging for saving best, printing    #############
         ##################################################   
         if (logger["epoch_best_val_acc"] <  correct/total): 
@@ -296,8 +299,8 @@ def get_args():
     parser.add_argument('--gloss_factordiv_bl', default=0., type=float, help='factor for range difference loss')
     parser.add_argument('--gloss_factorfeedback_bl', default=1e-1, type=float, help='factor for feedback loss from bl.')
     parser.add_argument('--gloss_factor_adv',default=6,type=float,help="factor for adversarial loss in gen loss function")
-    parser.add_argument('--gloss_factor_diff',default=3,type=float,help="factor for diff loss in gen loss function")
-    parser.add_argument('--gloss_factor_feedback',default=0.5,type=float,help="factor for feedback loss in gen loss function")
+    parser.add_argument('--gloss_factor_diff',default=2,type=float,help="factor for diff loss in gen loss function")
+    parser.add_argument('--gloss_factor_feedback',default=2,type=float,help="factor for feedback loss in gen loss function")
     opt = parser.parse_args()
     return opt
 if __name__ == '__main__':

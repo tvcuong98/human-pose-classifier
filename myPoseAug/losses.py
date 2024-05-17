@@ -115,7 +115,7 @@ def get_feedback_loss(args,classification_model,data_real,generator_output_dict,
         real_loss = real_loss.detach()
         
         hard_loss = torch.abs(1.0 - torch.exp(fake_loss- hard_ratio * real_loss))
-        return hard_loss * gloss_factorfeedback
+        return hard_loss
 
 
     # real_2d_pose -> classification model -> output 9 class
@@ -140,5 +140,5 @@ def get_feedback_loss(args,classification_model,data_real,generator_output_dict,
                                              fake_loss_bl, real_loss,
                                              args.gloss_factordiv_bl, args.gloss_factorfeedback_bl, tag='bl')
     # feedback_loss = pos_fake_loss_baToReal + pos_fake_loss_rtToReal
-    feedback_loss = pos_fake_loss_baToReal + pos_fake_loss_blToReal
+    feedback_loss = (pos_fake_loss_baToReal + pos_fake_loss_blToReal)*0.5
     return feedback_loss
